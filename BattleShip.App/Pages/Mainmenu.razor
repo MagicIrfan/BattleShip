@@ -1,4 +1,6 @@
 ﻿@page "/"
+@inject IJSRuntime JS
+@inject NavigationManager NavManager
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -7,24 +9,26 @@
         <h1 id="title">Bataille Navale</h1>
     </header>
     <div class="buttons">
-        <button role="button">Jouer</button>
-        <button role="button">Quitter</button>
+        <button role="button" @onclick="StartGame">Jouer</button>
+        <button role="button" @onclick="CloseGame">Quitter</button>
     </div>
 </main>
+
+@code {
+    private void StartGame()
+    {
+        NavManager.NavigateTo("/game");
+    }
+
+    private async void CloseGame()
+    {
+        await JS.InvokeVoidAsync("closeTab");
+    }
+}
 
 <style>
     header{
         margin-bottom:12em;
-    }
-
-    body {
-        margin: 0;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-image: linear-gradient(to right, #003366, #3399ff);
-        height: 100vh; 
-        display: flex;
-        align-items: center;
-        justify-content: center;
     }
 
     #title {
@@ -66,5 +70,11 @@
         outline: none;
     }
 </style>
+
+<script>
+    window.closeTab = function () {
+        window.close(); 
+    }
+</script>
 
 
