@@ -1,7 +1,70 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>BattleShip</PageTitle>
 
-<h1>Hello, world!</h1>
+<main>
+    <header>
+        <h1 id="title">Bataille Navale</h1>
+    </header>
+    <div class="buttons">
+        <button role="button">Jouer</button>
+        <button role="button">Quitter</button>
+    </div>
+</main>
 
-Welcome to your new app.
+<style>
+    header{
+        margin-bottom:12em;
+    }
+
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-image: linear-gradient(to right, #003366, #3399ff);
+        height: 100vh; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #title {
+        font-size: 4em;
+        text-align: center;
+        color: white;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); 
+        font-style:italic;
+    }
+
+    .buttons {
+        display: flex;
+        flex-direction: column; 
+        align-items: center;
+        justify-content: center;
+        gap: 20px; 
+    }
+
+    button {
+        background-color: #7fc9ff; 
+        border: none; 
+        border-radius: 30px; 
+        color: #003366; 
+        cursor: pointer;
+        font-size: 20px; 
+        font-weight: 600;
+        padding: 15px 30px; 
+        width:8em;
+        transition: transform 0.3s ease, background-color 0.3s ease; 
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); 
+    }
+
+    button:hover {
+        transform: scale(1.1); 
+        background-color: #66b3ff; 
+    }
+
+    button:focus {
+        outline: none;
+    }
+</style>
+
+
