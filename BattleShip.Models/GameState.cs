@@ -15,5 +15,13 @@ namespace BattleShip.Models
         public List<Boat> ComputerBoats { get; set; } = computerBoats;
         public bool IsPlayerWinner { get; set; } = isPlayerWinner;
         public bool IsComputerWinner { get; set; } = isComputerWinner;
+        public List<AttackRecord> AttackHistory { get; set; } = [];
+    
+        public class AttackRecord
+        {
+            public Position AttackPosition { get; set; }
+            public bool IsPlayerAttack { get; set; }
+            public bool IsHit { get; set; }
+        }
     }
 }

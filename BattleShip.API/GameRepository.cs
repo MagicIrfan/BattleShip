@@ -4,21 +4,30 @@ namespace BattleShip.API;
 
 public interface IGameRepository
 {
-    void AddGame(Guid gameId, GameState gameState);
-    GameState? GetGame(Guid gameId);
+    Task AddGame(Guid gameId, GameState gameState);
+    Task<GameState?>  GetGame(Guid gameId);
+    Task UpdateGame(GameState gameState);
 }
 
 public class GameRepository : IGameRepository
 {
     private readonly Dictionary<Guid, GameState> _gameStates = new();
 
-    public void AddGame(Guid gameId, GameState gameState)
+    public async Task AddGame(Guid gameId, GameState gameState)
     {
         _gameStates[gameId] = gameState;
     }
 
-    public GameState? GetGame(Guid gameId)
+    public async Task<GameState?> GetGame(Guid gameId)
     {
         return _gameStates.GetValueOrDefault(gameId);
+    }
+
+    public async Task UpdateGame(GameState gameState)
+    {
+        if (_gameStates.ContainsKey(gameState.GameId))
+            _gameStates[gameState.GameId] = gameState;
+        else
+            throw new KeyNotFoundException("Game not found");
     }
 }

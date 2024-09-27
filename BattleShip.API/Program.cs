@@ -1,13 +1,31 @@
+using Auth0.AspNetCore.Authentication;
 using BattleShip.API;
+using BattleShip.API.Methods;
+using BattleShip.API.Services;
 using BattleShip.Models;
+using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddGrpc();
+
 builder.Services.AddSingleton<IGameService, GameService>();
 builder.Services.AddSingleton<IGameRepository, GameRepository>();
+builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
+
+builder.Services.AddAuth0WebAppAuthentication(options =>
+{
+    options.Domain = builder.Configuration["Auth0:Domain"] ?? string.Empty;
+    options.ClientId = builder.Configuration["Auth0:ClientId"] ?? string.Empty;
+});
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -17,78 +35,42 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGrpcService<GameGrpcService>();
+
 app.UseHttpsRedirection();
 
-app.MapPost("/startGame", ([FromServices] IGameService gameService, [FromServices] IGameRepository gameRepository) =>
+app.MapHub<GameHub>("/gameHub");
+
+app.MapPost("/startGame", /*[Authorize]*/ async ([FromServices] IGameService gameService) => 
+    await GameMethods.StartGame(gameService));
+
+app.MapPost("/attack", /*[Authorize]*/ async (AttackRequest attackRequest, IValidator<AttackRequest> validator, IGameRepository gameRepository, IGameService gameService) => 
+        await GameMethods.ProcessAttack(attackRequest, validator, gameRepository, gameService))
+.Produces(200)
+.Produces(404)
+.ProducesValidationProblem();
+
+app.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId, [FromServices] IGameRepository gameRepository, [FromServices] IGameService gameService) =>
 {
-    var gameId = Guid.NewGuid();
-
-    var playerBoats = gameService.GenerateRandomBoats();
-    var computerBoats = gameService.GenerateRandomBoats();
-
-    var gameState = new GameState(
-        gameId: gameId,
-        playerBoats: playerBoats,
-        computerBoats: computerBoats,
-        isPlayerWinner: false,
-        isComputerWinner: false
-    );
-    
-    gameRepository.AddGame(gameId, gameState);
-
-    return Results.Ok(new
-    {
-        gameState.GameId, gameState.PlayerBoats
-    });
+    await GameMethods.Rollback(gameRepository, gameService, gameId);
 });
 
-app.MapPost("/attack", ([FromBody] AttackRequest attackRequest, [FromServices] IGameService gameService, [FromServices] IGameRepository gameRepository) =>
+app.MapGet("/login", [Authorize] async (context) =>
 {
-    var gameState = gameRepository.GetGame(attackRequest.GameId);
-    if (gameState == null)
-        return Results.NotFound("Game not found");
-
-    var playerAttackResult = gameService.ProcessAttack(gameState.ComputerBoats, attackRequest.AttackPosition);
-
-    if (gameService.CheckIfAllBoatsSunk(gameState.ComputerBoats))
-    {
-        gameState.IsPlayerWinner = true;
-        return Results.Ok(new
-        {
-            gameState.GameId,
-            PlayerAttackResult = "Hit",
-            IsPlayerWinner = true,
-            IsComputerWinner = false
-        });
-    }
-
-    var computerAttackPosition = gameService.GenerateRandomPosition();
-    var computerAttackResult = gameService.ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
-
-    if (gameService.CheckIfAllBoatsSunk(gameState.PlayerBoats))
-    {
-        gameState.IsComputerWinner = true;
-        return Results.Ok(new
-        {
-            gameState.GameId,
-            PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
-            ComputerAttackPosition = computerAttackPosition,
-            ComputerAttackResult = "Hit",
-            IsPlayerWinner = false,
-            IsComputerWinner = true
-        });
-    }
-
-    return Results.Ok(new
-    {
-        gameState.GameId,
-        PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
-        ComputerAttackPosition = computerAttackPosition,
-        ComputerAttackResult = computerAttackResult ? "Hit" : "Miss",
-        IsPlayerWinner = false,
-        IsComputerWinner = false
-    });
+    await AuthenticationMethods.Login(context, "/");
 });
 
+app.MapPost("/logout", [Authorize] async (context) =>
+{
+    await AuthenticationMethods.Logout(context);
+});
+
+app.MapGet("/profile", async (HttpContext context) =>
+{
+    return await AuthenticationMethods.Profile(context);
+});
 
 app.Run();
