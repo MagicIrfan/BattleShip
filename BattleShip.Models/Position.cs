@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace BattleShip.Models;
 
-namespace BattleShip.Models
+public class Position(int x, int y)
 {
-    internal class Position
-    {
-    }
+    public int X { get; set; } = x;
+    public int Y { get; set; } = y;
+    public bool IsHit { get; set; } = false;
 }
