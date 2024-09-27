@@ -1,0 +1,80 @@
+﻿@page "/"
+@inject IJSRuntime JS
+@inject NavigationManager NavManager
+
+<PageTitle>BattleShip</PageTitle>
+
+<main>
+    <header>
+        <h1 id="title">Bataille Navale</h1>
+    </header>
+    <div class="buttons">
+        <button role="button" @onclick="StartGame">Jouer</button>
+        <button role="button" @onclick="CloseGame">Quitter</button>
+    </div>
+</main>
+
+@code {
+    private void StartGame()
+    {
+        NavManager.NavigateTo("/game");
+    }
+
+    private async void CloseGame()
+    {
+        await JS.InvokeVoidAsync("closeTab");
+    }
+}
+
+<style>
+    header{
+        margin-bottom:12em;
+    }
+
+    #title {
+        font-size: 4em;
+        text-align: center;
+        color: white;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); 
+        font-style:italic;
+    }
+
+    .buttons {
+        display: flex;
+        flex-direction: column; 
+        align-items: center;
+        justify-content: center;
+        gap: 20px; 
+    }
+
+    button {
+        background-color: #7fc9ff; 
+        border: none; 
+        border-radius: 30px; 
+        color: #003366; 
+        cursor: pointer;
+        font-size: 20px; 
+        font-weight: 600;
+        padding: 15px 30px; 
+        width:8em;
+        transition: transform 0.3s ease, background-color 0.3s ease; 
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); 
+    }
+
+    button:hover {
+        transform: scale(1.1); 
+        background-color: #66b3ff; 
+    }
+
+    button:focus {
+        outline: none;
+    }
+</style>
+
+<script>
+    window.closeTab = function () {
+        window.close(); 
+    }
+</script>
+
+
