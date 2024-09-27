@@ -27,7 +27,22 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddSignalR();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod() 
+                   .AllowAnyHeader(); 
+        });
+});
+
+builder.Services.AddControllers(); 
+
 var app = builder.Build();
+
+app.UseCors("AllowAllOrigins");
 
 if (app.Environment.IsDevelopment())
 {
