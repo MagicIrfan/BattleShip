@@ -6,12 +6,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton<IGameService, GameService>();
+builder.Services.AddSingleton<IGameRepository, GameRepository>();
 
 var app = builder.Build();
-
-var gameStates = new Dictionary<Guid, GameState>();
-var gameService = new GameService();
-
 
 if (app.Environment.IsDevelopment())
 {
@@ -21,7 +19,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/startGame", () =>
+app.MapPost("/startGame", ([FromServices] IGameService gameService, [FromServices] IGameRepository gameRepository) =>
 {
     var gameId = Guid.NewGuid();
 
@@ -36,7 +34,7 @@ app.MapPost("/startGame", () =>
         isComputerWinner: false
     );
     
-    gameStates.Add(gameId, gameState);
+    gameRepository.AddGame(gameId, gameState);
 
     return Results.Ok(new
     {
@@ -44,36 +42,35 @@ app.MapPost("/startGame", () =>
     });
 });
 
-app.MapPost("/attack", (Guid gameId, Position attackPosition, [FromServices] Dictionary<Guid, GameState> gameStates) =>
+app.MapPost("/attack", ([FromBody] AttackRequest attackRequest, [FromServices] IGameService gameService, [FromServices] IGameRepository gameRepository) =>
 {
-    if (!gameStates.TryGetValue(gameId, out var gameState))
-    {
+    var gameState = gameRepository.GetGame(attackRequest.GameId);
+    if (gameState == null)
         return Results.NotFound("Game not found");
-    }
 
-    var playerAttackResult = gameService.ProcessAttack(gameState.ComputerBoats, attackPosition);
+    var playerAttackResult = gameService.ProcessAttack(gameState.ComputerBoats, attackRequest.AttackPosition);
 
-    if (gameState.ComputerBoats.All(b => b.Positions.All(p => p.IsHit)))
+    if (gameService.CheckIfAllBoatsSunk(gameState.ComputerBoats))
     {
         gameState.IsPlayerWinner = true;
         return Results.Ok(new
         {
-            GameId = gameState.GameId,
+            gameState.GameId,
             PlayerAttackResult = "Hit",
             IsPlayerWinner = true,
             IsComputerWinner = false
         });
     }
 
-    var computerAttackPosition = new Position(new Random().Next(0, 10), new Random().Next(0, 10));
-    var computerAttackResult = ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
+    var computerAttackPosition = gameService.GenerateRandomPosition();
+    var computerAttackResult = gameService.ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
 
-    if (gameState.PlayerBoats.All(b => b.Positions.All(p => p.IsHit)))
+    if (gameService.CheckIfAllBoatsSunk(gameState.PlayerBoats))
     {
         gameState.IsComputerWinner = true;
         return Results.Ok(new
         {
-            GameId = gameState.GameId,
+            gameState.GameId,
             PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
             ComputerAttackPosition = computerAttackPosition,
             ComputerAttackResult = "Hit",
@@ -84,7 +81,7 @@ app.MapPost("/attack", (Guid gameId, Position attackPosition, [FromServices] Dic
 
     return Results.Ok(new
     {
-        GameId = gameState.GameId,
+        gameState.GameId,
         PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
         ComputerAttackPosition = computerAttackPosition,
         ComputerAttackResult = computerAttackResult ? "Hit" : "Miss",
