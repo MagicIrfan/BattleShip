@@ -1,29 +1,39 @@
 ﻿@page "/game"
+@inject HttpClient Http
 
 <PageTitle>BattleShip</PageTitle>
 
 <main>
-    <div class="grids">
-        <div class="grid">
-            @for (int row = 0; row < 10; row++)
+    @if (gameId != null)
+    {
+        <div class="grids">
+            @foreach(var boat in boats)
             {
-                @for (int col = 0; col < 10; col++)
-                {
-                    <button class="cell"></button>
-                }
-            }
-        </div>
+                <div class="grid">
+                    @for (int row = 0; row < 10; row++)
+                    {
+                        @for (int col = 0; col < 10; col++)
+                        {
+                            var currentRow = row;
+                            var currentCol = col;
 
-        <div class="grid">
-            @for (int row = 0; row < 10; row++)
-            {
-                @for (int col = 0; col < 10; col++)
-                {
-                    <button class="cell"></button>
-                }
+                            <button class="cell" @onclick="() => HandleCellClick(currentRow, currentCol, boat)"
+                                    style="background-color: @(GetCellColor(currentRow, currentCol, boat))">
+                                @if (IsBoatAtPosition(currentRow, currentCol, boat))
+                                {
+                                    <span>@GetBoatSymbol(currentRow, currentCol, boat)</span>
+                                }
+                            </button>
+                        }
+                    }
+                </div>
             }
         </div>
-    </div>
+    }
+    else
+    {
+        <p>Chargement ...</p>
+    }
 </main>
 
 <style>
@@ -48,19 +58,85 @@
     .cell {
         width: 40px;
         height: 40px;
-        background-color: #ffffff;
         border: 1px solid #b0c4de;
         border-radius: 4px;
         cursor: pointer;
         transition: transform 0.2s, background-color 0.2s;
+        position: relative;
     }
 
-    .cell:hover {
-        background-color: #7fc9ff;
-        transform: scale(1.05);
+        .cell:hover {
+            background-color: #7fc9ff;
+            transform: scale(1.05);
+        }
+
+    .boat-symbol {
+        font-weight: bold;
+        color: darkblue;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
 </style>
 
 @code {
+    private class GameData
+    {
+        public Guid GameId { get; set; }
+        public List<Boat> PlayerBoats { get; set; }
+    }
 
+    private Guid? gameId;
+    private List<Boat> boats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.PostAsync("https://localhost:7064/startGame", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var gameData = await response.Content.ReadFromJsonAsync<GameData>();
+
+            gameId = gameData?.GameId;
+            boats = gameData.PlayerBoats;
+            Console.WriteLine($"Game ID: {gameId}");
+            if (gameData?.PlayerBoats != null)
+            {
+                Console.WriteLine("Boats:");
+                foreach (var boat in gameData.PlayerBoats)
+                {
+                    Console.WriteLine($"Name: {boat.Name}, Size: {boat.Size}, Is Vertical: {boat.IsVertical}, Start Position: ({boat.StartPosition.X}, {boat.StartPosition.Y})");
+                }
+            }
+        }
+    }
+
+    private bool IsBoatAtPosition(int row, int col, Boat boat)
+    {
+        return boat.Positions.Any(pos => pos.X == col && pos.Y == row);
+    }
+
+    private string GetBoatSymbol(int row, int col, Boat boat)
+    {
+        return boat != null ? boat.Name[0].ToString() : "";
+    }
+
+    private string GetCellColor(int row, int col, Boat boat)
+    {
+        Position? position = GetPosition(row, col, boat);
+        
+        return position != null && position.IsHit ? "red" : "white";
+    }
+
+    private void HandleCellClick(int row, int col, Boat boat)
+    {
+        Console.WriteLine($"Clicked on cell: {row},{col}");
+        Console.WriteLine($"Boat: {boat.Name}");
+    }
+
+    private Position? GetPosition(int row, int col, Boat boat)
+    {
+        return boat.Positions.FirstOrDefault(pos => pos.X == row && pos.Y == col);
+    }
 }
