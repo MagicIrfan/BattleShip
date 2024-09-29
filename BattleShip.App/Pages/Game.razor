@@ -1,6 +1,7 @@
 ﻿@page "/game"
 @using System.Text.Json
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -8,27 +9,42 @@
     @if (gameId != null)
     {
         <div class="grids">
-            @foreach(var boat in boats)
-            {
-                <div class="grid">
-                    @for (int row = 0; row < 10; row++)
+            <div class="grid">
+                @for (int row = 0; row < playerGrid.Positions.Length; row++)
+                {
+                    @for (int col = 0; col < playerGrid.Positions[0].Length; col++)
                     {
-                        @for (int col = 0; col < 10; col++)
-                        {
-                            var currentRow = row;
-                            var currentCol = col;
+                        var currentRow = row;
+                        var currentCol = col;
 
-                            <button class="cell" @onclick="() => HandleCellClick(currentCol, currentRow, boat)"
-                                    style="background-color: @(GetCellColor(currentCol, currentRow, boat))">
-                                @if (IsBoatAtPosition(currentCol, currentRow, boat))
-                                {
-                                    <span>@GetBoatSymbol(currentCol, currentRow, boat)</span>
-                                }
-                            </button>
-                        }
+                        Position playerPosition = playerGrid.Positions[col][row];
+                        
+                        <button disabled="disabled" class="cell"
+                                style="background-color: @(GetCellColor(playerPosition))">
+                            @if (IsBoatAtPosition(playerPosition))
+                            {
+                                <span>@GetBoatSymbol(playerPosition)</span>
+                            }
+                        </button>
                     }
-                </div>
-            }
+                }
+            </div>
+            <div class="grid">
+                @for (int row = 0; row < oponnentGrid.Positions.Length; row++)
+                {
+                    @for (int col = 0; col < oponnentGrid.Positions[0].Length; col++)
+                    {
+                        var currentRow = row;
+                        var currentCol = col;
+
+                        Position oponnentPosition = oponnentGrid.Positions[col][row];
+
+                        <button class="cell" @onclick="() => HandleCellClick(oponnentPosition)"
+                                style="background-color: @(GetCellColor(oponnentPosition))">
+                        </button>
+                    }
+                }
+            </div>
         </div>
     }
     else
@@ -61,15 +77,18 @@
         height: 40px;
         border: 1px solid #b0c4de;
         border-radius: 4px;
-        cursor: pointer;
-        transition: transform 0.2s, background-color 0.2s;
         position: relative;
     }
 
-        .cell:hover {
-            background-color: #7fc9ff;
-            transform: scale(1.05);
-        }
+    .cell:not([disabled]):hover {
+        background-color: #7fc9ff;
+        transform: scale(1.05);
+    }
+
+    .cell:not([disabled]) {
+        cursor: pointer;
+        transition: transform 0.2s, background-color 0.2s;
+    }
 
     .boat-symbol {
         font-weight: bold;
@@ -82,25 +101,11 @@
 </style>
 
 @code {
-    private class GameData
-    {
-        public Guid GameId { get; set; }
-        public List<Boat>? PlayerBoats { get; set; }
-    }
-
-    private class GameResult
-    {
-        public Guid GameId { get; set; } 
-        public string PlayerAttackResult { get; set; } 
-        public Position ComputerAttackPosition { get; set; }
-        public string ComputerAttackResult { get; set; } 
-        public bool IsPlayerWinner { get; set; } 
-        public bool IsComputerWinner { get; set; }
-    }
-
-    private Guid gameId;
+    [CascadingParameter] IModalService ModalService { get; set; }
+    private Guid? gameId;
     private List<Boat>? boats;
-    private Boat playerBoat, computerBoat;
+    private Grid playerGrid = new Grid(10,10);
+    private Grid oponnentGrid = new Grid(10,10);
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,69 +115,58 @@
         {
             var gameData = await response.Content.ReadFromJsonAsync<GameData>();
 
-            // Log the game data for debugging
-            Console.WriteLine(JsonSerializer.Serialize(gameData));
-
-            // Ensure gameData is not null
             if (gameData != null)
             {
-                gameId = gameData.GameId;
-                boats = gameData.PlayerBoats;
-                playerBoat = boats[0];
-                computerBoat = boats[1];
-
-                Console.WriteLine($"Game ID: {gameId}");
-
-                if (boats != null)
-                {
-                    Console.WriteLine("Boats:");
-                    foreach (var boat in boats)
-                    {
-                        // Ensure boat and its properties are not null
-                        if (boat != null)
-                        {
-                            Console.WriteLine($"Name: {boat.Name}, Size: {boat.Size}, Is Vertical: {boat.IsVertical}, Start Position: ({boat.StartPosition?.X}, {boat.StartPosition?.Y})");
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("No boats available.");
-                }
-            }
-            else
-            {
-                Console.WriteLine("Game data is null.");
+                gameId = gameData?.GameId;
+                boats = gameData?.PlayerBoats;
             }
         }
-        else
+    }
+
+    private bool IsBoatAtPosition(Position position, Boat boat)
+    {
+        return boat.Positions.Any(pos => pos.X == position.X && pos.Y == position.Y);
+    }
+
+    private bool IsBoatAtPosition(Position position)
+    {
+        foreach (var boat in boats)
         {
-            Console.WriteLine($"Error: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}");
+            if (IsBoatAtPosition(position, boat))
+            {
+                return true;
+            }
         }
+        return false;
     }
 
-    private bool IsBoatAtPosition(int col, int row, Boat boat)
+    private Boat? GetBoatAtPosition(Position position)
     {
-        return boat.Positions.Any(pos => pos.X == col && pos.Y == row);
+        foreach (var boat in boats)
+        {
+            if (IsBoatAtPosition(position, boat))
+            {
+                return boat;
+            }
+        }
+        return null;
     }
 
-    private string GetBoatSymbol(int col, int row, Boat boat)
+    private string GetBoatSymbol(Position position)
     {
+        Boat? boat = GetBoatAtPosition(position);
         return boat != null ? boat.Name[0].ToString() : "";
     }
 
-    private string GetCellColor(int col, int row, Boat boat)
+    private string GetCellColor(Position position)
     {
-        Position? position = GetPosition(col, row, boat);
-
         return position != null && position.IsHit ? "red" : "white";
     }
 
-    private async Task HandleCellClick(int col, int row, Boat boat)
+    private async Task HandleCellClick(Position position)
     {
-        Console.WriteLine($"Clicked on cell: {col},{row}");
-        Console.WriteLine($"Boat: {boat.Name}");
-        await SendAttackRequest(col, row, boat);
+        Console.WriteLine($"Clicked on cell: {position.X},{position.Y}");
+        await SendAttackRequest(position);
     }
 
     private Position? GetPosition(int col, int row, Boat boat)
@@ -185,22 +179,43 @@
         return new Position(col, row);
     }
 
-    private async Task SendAttackRequest(int col, int row, Boat boat)
+    private Position? GetPosition(int col, int row)
     {
-        if (gameId == null)
+        // Parcourt tous les bateaux dans la liste
+        foreach (var boat in boats)
         {
-            Console.WriteLine("Game ID is null. Cannot send attack request.");
-            return;
+            // Cherche la position dans le bateau actuel
+            Position? boatPosition = boat.Positions.FirstOrDefault(pos => pos.X == col && pos.Y == row);
+
+            // Si la position est trouvée, la retourne
+            if (boatPosition != null)
+            {
+                return boatPosition;
+            }
         }
 
-        var attackPosition = GetPosition(col, row, computerBoat);
-        Console.WriteLine("position d'attaque : ");
-        Console.WriteLine(JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true }));
+        // Si aucune position correspondante n'est trouvée, crée une nouvelle position par défaut
+        return new Position(col, row);
+    }
+
+    private Position? GetBoatPosition(int col, int row, Boat boat)
+    {
+        return boat.Positions.FirstOrDefault(pos => pos.X == col && pos.Y == row);
+    }
+
+    private bool BoatIsHit(int col, int row, Boat boat)
+    {
+        Position? boatPosition = GetBoatPosition(col, row, boat);
+        return boatPosition != null && boatPosition.IsHit;
+    }
+
+    private async Task SendAttackRequest(Position position)
+    {
 
         var attackRequest = new AttackRequest
             {
-                GameId = gameId,
-                AttackPosition = attackPosition
+                GameId = (System.Guid)gameId,
+                AttackPosition = position
             };
 
         var response = await Http.PostAsJsonAsync("https://localhost:7064/attack", attackRequest);
@@ -208,30 +223,64 @@
         if (response.IsSuccessStatusCode)
         {
             var responseData = await response.Content.ReadFromJsonAsync<GameResult>();
-            Console.WriteLine($"Attack successful: {responseData}");
             if (responseData.PlayerAttackResult == "Hit")
             {
-                attackPosition.IsHit = true;
-                Console.WriteLine("Ouais");
+                position.IsHit = true;
+                Console.WriteLine($"Hit : {position.X},{position.Y}");
+                Console.WriteLine(JsonSerializer.Serialize(position, new JsonSerializerOptions { WriteIndented = true }));
+                oponnentGrid.Positions[position.X][position.Y] = position;
             }
             if (responseData.ComputerAttackResult == "Hit")
             {
-                Position playerBoatPosition = GetPosition(col, row, playerBoat);
+                Position playerBoatPosition = responseData.ComputerAttackPosition;
                 playerBoatPosition.IsHit = true;
-                Console.WriteLine("Player boat position");
-                Console.WriteLine(JsonSerializer.Serialize(playerBoatPosition, new JsonSerializerOptions { WriteIndented = true }));
-                Console.WriteLine(JsonSerializer.Serialize(boats, new JsonSerializerOptions { WriteIndented = true }));
+                playerGrid.Positions[playerBoatPosition.X][playerBoatPosition.Y] = playerBoatPosition;
             }
             StateHasChanged();
-        }
-        else
-        {
-            Console.WriteLine($"Error: {response.StatusCode}");
+            HandleGameResult(responseData);
         }
     }
 
     private void UpdateGrids()
     {
-        
+
+    }
+
+    private async Task HandleGameResult(GameResult responseData)
+    {
+
+        if (responseData.IsPlayerWinner || responseData.IsComputerWinner)
+        {
+            string title = "";
+            string message = "";
+            if (responseData.IsPlayerWinner)
+            {
+                title = "Victoire !";
+                message = "Vous avez gagné !";
+            }
+            if (responseData.IsComputerWinner)
+            {
+                title = "Défaite";
+                message = "Vous avez perdu";
+            }
+            
+            var modalResult = await ShowModal(title,message);
+        }
+    }
+
+    private async Task<ModalResult> ShowModal(string title, string message)
+    {
+        var options = new Blazored.Modal.ModalOptions
+            {
+                HideCloseButton = true,
+                DisableBackgroundCancel = true
+            };
+
+        var parameters = new ModalParameters();
+        parameters.Add("Title", title);
+        parameters.Add("Message", message);
+
+        var modal = ModalService.Show<GameModal>("Fin du jeu", parameters, options);
+        return await modal.Result;
     }
 }

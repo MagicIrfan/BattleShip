@@ -1,0 +1,27 @@
+﻿@* <div class="modal-content">
+    <h5>@Title</h5>
+    <p>@Message</p>
+    <button @onclick="RestartGame">Recommencer</button>
+    <button @onclick="ReturnToMain">Retour</button>
+</div>
+
+@code {
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; }
+
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public string Message { get; set; }
+
+    private void RestartGame()
+    {
+        //ModalInstance.Close(ModalResult.Ok("restart")); // Ferme le modal avec un résultat "restart"
+    }
+
+    private void ReturnToMain()
+    {
+        //ModalInstance.Close(ModalResult.Ok("return")); // Ferme le modal avec un résultat "return"
+    }
+} *@

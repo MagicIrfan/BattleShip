@@ -1,4 +1,5 @@
 ﻿namespace BattleShip.Models;
+
 public class GameResult
 {
     public Guid GameId { get; set; }
