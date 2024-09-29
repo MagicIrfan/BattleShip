@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject Grpc.GameService.GameServiceClient GameClient
+@inject IModalService Modal
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -101,7 +102,6 @@
 </style>
 
 @code {
-    [CascadingParameter] IModalService ModalService { get; set; }
     private Guid? gameId;
     private List<Boat>? boats;
     private Grid playerGrid = new Grid(10,10);
@@ -234,11 +234,6 @@
         }
     }
 
-    private void UpdateGrids()
-    {
-
-    }
-
     private async Task HandleGameResult(AttackResponse responseData)
     {
 
@@ -263,17 +258,11 @@
 
     private async Task<ModalResult> ShowModal(string title, string message)
     {
-        var options = new Blazored.Modal.ModalOptions
-            {
-                HideCloseButton = true,
-                DisableBackgroundCancel = true
-            };
-
         var parameters = new ModalParameters();
         parameters.Add("Title", title);
         parameters.Add("Message", message);
 
-        var modal = ModalService.Show<GameModal>("Fin du jeu", parameters, options);
+        var modal = Modal.Show<GameModal>("Fin du jeu", parameters);
         return await modal.Result;
     }
 }
