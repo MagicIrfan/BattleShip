@@ -1,7 +1,7 @@
 ﻿@page "/game"
-@using System.Text.Json
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+@inject Grpc.GameService.GameServiceClient GameClient
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -17,7 +17,7 @@
                         var currentRow = row;
                         var currentCol = col;
 
-                        Position playerPosition = playerGrid.Positions[col][row];
+                        Position playerPosition = playerGrid.Positions[col][row].Position;
                         
                         <button disabled="disabled" class="cell"
                                 style="background-color: @(GetCellColor(playerPosition))">
@@ -37,7 +37,7 @@
                         var currentRow = row;
                         var currentCol = col;
 
-                        Position oponnentPosition = oponnentGrid.Positions[col][row];
+                        Position oponnentPosition = oponnentGrid.Positions[col][row].Position;
 
                         <button class="cell" @onclick="() => HandleCellClick(oponnentPosition)"
                                 style="background-color: @(GetCellColor(oponnentPosition))">
@@ -109,17 +109,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var response = await Http.PostAsync("https://localhost:7064/startGame", null);
+        var startGameRequest = new StartGameRequest();
+        var startGameResponse = await GameClient.StartGameAsync(startGameRequest); 
 
-        if (response.IsSuccessStatusCode)
+        if (startGameResponse != null)
         {
-            var gameData = await response.Content.ReadFromJsonAsync<GameData>();
-
-            if (gameData != null)
-            {
-                gameId = gameData?.GameId;
-                boats = gameData?.PlayerBoats;
-            }
+            gameId = new Guid(startGameResponse.GameId);
+            boats = startGameResponse.PlayerBoats.ToList();
         }
     }
 
@@ -176,7 +172,7 @@
         {
             return boatPosition;
         }
-        return new Position(col, row);
+        return new PositionWrapper(col, row).Position;
     }
 
     private Position? GetPosition(int col, int row)
@@ -195,7 +191,7 @@
         }
 
         // Si aucune position correspondante n'est trouvée, crée une nouvelle position par défaut
-        return new Position(col, row);
+        return new PositionWrapper(col, row).Position;
     }
 
     private Position? GetBoatPosition(int col, int row, Boat boat)
@@ -211,33 +207,30 @@
 
     private async Task SendAttackRequest(Position position)
     {
-
         var attackRequest = new AttackRequest
-            {
-                GameId = (System.Guid)gameId,
-                AttackPosition = position
-            };
-
-        var response = await Http.PostAsJsonAsync("https://localhost:7064/attack", attackRequest);
-
-        if (response.IsSuccessStatusCode)
         {
-            var responseData = await response.Content.ReadFromJsonAsync<GameResult>();
-            if (responseData.PlayerAttackResult == "Hit")
+            GameId = gameId?.ToString(),
+            AttackPosition = position
+        };
+
+        var attackResponse = await GameClient.AttackAsync(attackRequest);
+
+        if (attackResponse != null)
+        {
+            if (attackResponse.PlayerAttackResult == "Hit")
             {
                 position.IsHit = true;
                 Console.WriteLine($"Hit : {position.X},{position.Y}");
-                Console.WriteLine(JsonSerializer.Serialize(position, new JsonSerializerOptions { WriteIndented = true }));
-                oponnentGrid.Positions[position.X][position.Y] = position;
+                oponnentGrid.Positions[position.X][position.Y] = new PositionWrapper(position);
             }
-            if (responseData.ComputerAttackResult == "Hit")
+            if (attackResponse.ComputerAttackResult == "Hit")
             {
-                Position playerBoatPosition = responseData.ComputerAttackPosition;
+                Position playerBoatPosition = attackResponse.ComputerAttackPosition;
                 playerBoatPosition.IsHit = true;
-                playerGrid.Positions[playerBoatPosition.X][playerBoatPosition.Y] = playerBoatPosition;
+                playerGrid.Positions[playerBoatPosition.X][playerBoatPosition.Y] = new PositionWrapper(playerBoatPosition);
             }
             StateHasChanged();
-            HandleGameResult(responseData);
+            await HandleGameResult(attackResponse);
         }
     }
 
@@ -246,7 +239,7 @@
 
     }
 
-    private async Task HandleGameResult(GameResult responseData)
+    private async Task HandleGameResult(AttackResponse responseData)
     {
 
         if (responseData.IsPlayerWinner || responseData.IsComputerWinner)

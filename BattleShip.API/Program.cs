@@ -33,8 +33,9 @@ builder.Services.AddCors(options =>
         builder =>
         {
             builder.AllowAnyOrigin()
-                   .AllowAnyMethod() 
-                   .AllowAnyHeader(); 
+                   .AllowAnyMethod()
+                   .AllowAnyHeader()
+                   .WithExposedHeaders("grpc-status", "grpc-message");
         });
 });
 
@@ -50,10 +51,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseGrpcWeb();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGrpcService<GameGrpcService>();
+app.MapGrpcService<GameGrpcService>().EnableGrpcWeb();
 
 app.UseHttpsRedirection();
 

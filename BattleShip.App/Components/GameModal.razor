@@ -1,8 +1,8 @@
-﻿@* <div class="modal-content">
+﻿<div class="modal-content">
     <h5>@Title</h5>
     <p>@Message</p>
-    <button @onclick="RestartGame">Recommencer</button>
-    <button @onclick="ReturnToMain">Retour</button>
+    <button @onclick="async () => await RestartGame()">Recommencer</button>
+    <button @onclick="async () => await ReturnToMain()">Retour</button>
 </div>
 
 @code {
@@ -15,13 +15,19 @@
     [Parameter]
     public string Message { get; set; }
 
-    private void RestartGame()
+    private async Task RestartGame()
     {
-        //ModalInstance.Close(ModalResult.Ok("restart")); // Ferme le modal avec un résultat "restart"
+        if (ModalInstance != null)
+        {
+            await ModalInstance.CloseAsync(ModalResult.Ok("restart"));
+        }
     }
 
-    private void ReturnToMain()
+    private async Task ReturnToMain()
     {
-        //ModalInstance.Close(ModalResult.Ok("return")); // Ferme le modal avec un résultat "return"
+        if (ModalInstance != null)
+        {
+            await ModalInstance.CloseAsync(ModalResult.Ok("return"));
+        }
     }
-} *@
+}

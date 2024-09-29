@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "BattleShip.Grpc";
+
+service GameService {
+  rpc StartGame (StartGameRequest) returns (StartGameResponse);
+  rpc Attack (AttackRequest) returns (AttackResponse);
+}
+
+message StartGameRequest {}
+
+message StartGameResponse {
+  string gameId = 1;
+  repeated Boat playerBoats = 2;
+}
+
+message AttackRequest {
+  string gameId = 1;
+  Position attackPosition = 2;
+}
+
+message AttackResponse {
+  string gameId = 1;
+  string playerAttackResult = 2;
+  Position computerAttackPosition = 3;
+  string computerAttackResult = 4;
+  bool isPlayerWinner = 5;
+  bool isComputerWinner = 6;
+}
+
+message Boat {
+  string name = 1;
+  repeated Position positions = 2;
+}
+
+message Position {
+  int32 x = 1;
+  int32 y = 2;
+  bool isHit = 3;
+}
