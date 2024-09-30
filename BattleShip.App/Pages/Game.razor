@@ -3,6 +3,7 @@
 @inject NavigationManager NavigationManager
 @inject Grpc.GameService.GameServiceClient GameClient
 @inject IModalService Modal
+@inject NavigationManager NavManager
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -104,13 +105,21 @@
 @code {
     private Guid? gameId;
     private List<Boat>? boats;
-    private Grid playerGrid = new Grid(10,10);
-    private Grid oponnentGrid = new Grid(10,10);
+    private Grid playerGrid;
+    private Grid oponnentGrid;
 
     protected override async Task OnInitializedAsync()
     {
+        await StartGame();
+    }
+
+    private async Task StartGame()
+    {
         var startGameRequest = new StartGameRequest();
-        var startGameResponse = await GameClient.StartGameAsync(startGameRequest); 
+        var startGameResponse = await GameClient.StartGameAsync(startGameRequest);
+
+        playerGrid = new Grid(10, 10);
+        oponnentGrid = new Grid(10, 10);
 
         if (startGameResponse != null)
         {
@@ -234,10 +243,19 @@
             }
             
             var modalResult = await ShowModal(title,message);
+
+            if (modalResult == "restart")
+            {
+                await StartGame();
+            }
+            else if (modalResult == "return")
+            {
+                NavManager.NavigateTo("/");
+            }
         }
     }
 
-    private async Task<ModalResult> ShowModal(string title, string message)
+    private async Task<string> ShowModal(string title, string message)
     {
         var parameters = new ModalParameters();
         parameters.Add("Title", title);
@@ -246,12 +264,18 @@
         var options = new ModalOptions
             {
                 HideCloseButton = true,
-                DisableBackgroundCancel = true,
-                Class = "my-custom-modal-class"
+                DisableBackgroundCancel = true
             };
 
 
         var modal = Modal.Show<GameModal>("Fin du jeu", parameters, options);
-        return await modal.Result;
+        var result = await modal.Result;
+
+        if (result.Confirmed)
+        {
+            return result.Data.ToString();
+        }
+
+        return null;
     }
 }
