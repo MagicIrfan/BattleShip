@@ -175,25 +175,6 @@
         return new PositionWrapper(col, row).Position;
     }
 
-    private Position? GetPosition(int col, int row)
-    {
-        // Parcourt tous les bateaux dans la liste
-        foreach (var boat in boats)
-        {
-            // Cherche la position dans le bateau actuel
-            Position? boatPosition = boat.Positions.FirstOrDefault(pos => pos.X == col && pos.Y == row);
-
-            // Si la position est trouvée, la retourne
-            if (boatPosition != null)
-            {
-                return boatPosition;
-            }
-        }
-
-        // Si aucune position correspondante n'est trouvée, crée une nouvelle position par défaut
-        return new PositionWrapper(col, row).Position;
-    }
-
     private Position? GetBoatPosition(int col, int row, Boat boat)
     {
         return boat.Positions.FirstOrDefault(pos => pos.X == col && pos.Y == row);
@@ -262,7 +243,15 @@
         parameters.Add("Title", title);
         parameters.Add("Message", message);
 
-        var modal = Modal.Show<GameModal>("Fin du jeu", parameters);
+        var options = new ModalOptions
+            {
+                HideCloseButton = true,
+                DisableBackgroundCancel = true,
+                Class = "my-custom-modal-class"
+            };
+
+
+        var modal = Modal.Show<GameModal>("Fin du jeu", parameters, options);
         return await modal.Result;
     }
 }

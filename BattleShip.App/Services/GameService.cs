@@ -1,6 +1,10 @@
-﻿namespace BattleShip.Services
+﻿namespace BattleShip.Services;
+
+public interface IGameService
 {
-    public class GameService
-    {
-    }
+    
+}
+
+public class GameService
+{
 }
