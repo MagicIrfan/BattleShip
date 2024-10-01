@@ -3,12 +3,21 @@ using Auth0.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
-namespace BattleShip.API.Methods;
+namespace BattleShip.API.Services;
 
-public static class AuthenticationMethods
+public interface IAuthenticationService
 {
-    public static async Task Login(HttpContext context, string returnUrl)
+    Task Login();
+    Task Logout();
+    IResult Profile();
+}
+
+public class AuthenticationService(HttpContext context) : IAuthenticationService
+{
+    public async Task Login()
     {
+        const string returnUrl = "/";
+        
         var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
             .WithRedirectUri(returnUrl)
             .Build();
@@ -16,7 +25,7 @@ public static class AuthenticationMethods
         await context.ChallengeAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
     }
 
-    public static async Task Logout(HttpContext context)
+    public async Task Logout()
     {
         var authenticationProperties = new LogoutAuthenticationPropertiesBuilder()
             .WithRedirectUri("/")
@@ -26,7 +35,7 @@ public static class AuthenticationMethods
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
 
-    public static async Task<IResult> Profile(HttpContext context)
+    public IResult Profile()
     {
         var user = context.User;
         return Results.Ok(new

@@ -1,11 +1,12 @@
-﻿using BattleShip.Models;
+﻿using BattleShip.API.Helpers;
+using BattleShip.Grpc;
+using BattleShip.Models;
 using Grpc.Core;
+using AttackRequest = BattleShip.Grpc.AttackRequest;
+using Boat = BattleShip.Grpc.Boat;
+using Position = BattleShip.Grpc.Position;
 
 namespace BattleShip.API.Services;
-
-using Grpc;
-using System.Linq;
-using System.Threading.Tasks;
 
 public class GameGrpcService(IGameService gameService, IGameRepository gameRepository) : Grpc.GameService.GameServiceBase
 {
@@ -23,47 +24,48 @@ public class GameGrpcService(IGameService gameService, IGameRepository gameRepos
             isOpponentWinner: false
         );
 
-        await Task.Run(() => gameRepository.AddGame(gameId, gameState));
+        gameRepository.AddGame(gameId, gameState);
 
         var response = new StartGameResponse
         {
-            GameId = gameId.ToString()
+            GameId = gameId.ToString(),
+            PlayerBoats = {
+                playerBoats.Select(boat => new Boat {
+                    Name = boat.Name,
+                    Positions = { boat.Positions.Select(p => new Position { X = p.X, Y = p.Y, IsHit = p.IsHit }) }
+                })
+            }
         };
 
-        foreach (var boat in playerBoats)
-        {
-            var grpcBoat = new Boat { Name = boat.Name };
-            grpcBoat.Positions.AddRange(boat.Positions.Select(p => new Position { X = p.X, Y = p.Y, IsHit = p.IsHit }));
-            response.PlayerBoats.Add(grpcBoat);
-        }
-
-        return response;
+        return await Task.FromResult(response);
     }
 
-    public override async Task<AttackResponse> Attack(AttackRequest request, ServerCallContext context)
+    public override Task<AttackResponse> Attack(AttackRequest request, ServerCallContext context)
     {
         var gameId = Guid.Parse(request.GameId);
-        var gameState = await Task.Run(() => gameRepository.GetGame(gameId));
+        var gameState = gameRepository.GetGame(gameId);
+
         if (gameState == null)
+        {
             throw new RpcException(new Status(StatusCode.NotFound, "Game not found"));
+        }
 
-        var attackPosition = new Models.Position(request.AttackPosition.X,request.AttackPosition.Y);
-        var playerAttackResult = await Task.Run(() => gameService.ProcessAttack(gameState.OpponentBoats, attackPosition));
+        var attackPosition = new Models.Position(request.AttackPosition.X, request.AttackPosition.Y);
+        var playerAttackResult = AttackHelper.ProcessAttack(gameState.OpponentBoats, attackPosition);
 
-        var computerAttackPosition = await Task.Run(gameService.GenerateRandomPosition);
-        var computerAttackResult = await Task.Run(() => gameService.ProcessAttack(gameState.PlayerBoats, computerAttackPosition));
+        var computerAttackPosition = gameService.GenerateRandomPosition();
+        var computerAttackResult = AttackHelper.ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
 
-        var response = new AttackResponse
+        gameRepository.UpdateGame(gameState);
+
+        return Task.FromResult(new AttackResponse
         {
             GameId = gameState.GameId.ToString(),
             PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
             ComputerAttackPosition = new Position { X = computerAttackPosition.X, Y = computerAttackPosition.Y },
             ComputerAttackResult = computerAttackResult ? "Hit" : "Miss",
-            IsPlayerWinner = await Task.Run(() => gameService.CheckIfAllBoatsSunk(gameState.OpponentBoats)),
-            IsComputerWinner = await Task.Run(() => gameService.CheckIfAllBoatsSunk(gameState.PlayerBoats))
-        };
-
-        return response;
+            IsPlayerWinner = gameService.CheckIfAllBoatsSunk(gameState.OpponentBoats),
+            IsComputerWinner = gameService.CheckIfAllBoatsSunk(gameState.PlayerBoats)
+        });
     }
-
 }

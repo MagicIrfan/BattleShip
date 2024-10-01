@@ -1,19 +1,23 @@
 ﻿namespace BattleShip.Models;
 using FluentValidation;
 
-public class AttackRequest
+public abstract class AttackRequest(Position attackPosition)
 {
     public Guid GameId { get; set; }
-    public Position AttackPosition { get; set; }
+    public bool IsMultiplayer { get; set; }
+    public Position AttackPosition { get; set; } = attackPosition;
 }
 
-public class AttackRequestValidator : AbstractValidator<AttackRequest>
+public abstract class AttackRequestValidator : AbstractValidator<AttackRequest>
 {
-    public AttackRequestValidator()
+    protected AttackRequestValidator()
     {
         RuleFor(x => x.GameId)
             .NotEmpty().WithMessage("GameId is required.")
             .NotEqual(Guid.Empty).WithMessage("GameId must be a valid GUID.");
+
+        RuleFor(x => x.IsMultiplayer)
+            .NotNull().WithMessage("IsMultiplayer is required.");
 
         RuleFor(x => x.AttackPosition)
             .NotNull().WithMessage("Attack position is required.");

@@ -1,20 +1,22 @@
 ﻿using BattleShip.API.Helpers;
 using BattleShip.Models;
+using FluentValidation;
 
 namespace BattleShip.API.Services;
 
 public interface IGameService
 {
     List<Boat> GenerateRandomBoats();
-    bool ProcessAttack(List<Boat> boats, Position attackPosition);
+    Task<IResult> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator);
     bool CheckIfAllBoatsSunk(List<Boat> boats);
     Position GenerateRandomPosition();
-    Task RollbackTurnAsync(GameState gameState, Guid gameId);
-    Task<IResult> UpdateGameStateAsync(bool playerAttackResult, GameState gameState);
-    Task<IResult> StartGame();
+    IResult RollbackTurn(Guid gameId);
+    IResult StartGame();
+    IResult GetLeaderboard();
+    IResult PlaceBoats(List<Boat> playerBoats);
 }
 
-public class GameService(IGameRepository gameRepository) : IGameService
+public class GameService(IGameRepository gameRepository, HttpContext context) : IGameService
 {
     private const int GridSize = 10;
 
@@ -38,9 +40,24 @@ public class GameService(IGameRepository gameRepository) : IGameService
         return boats;
     }
 
-    public bool ProcessAttack(List<Boat> boats, Position attackPosition)
+    public async Task<IResult> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator)
     {
-        return AttackHelper.ProcessAttack(boats, attackPosition);
+        var validationResult = await validator.ValidateAsync(attackRequest);
+
+        if (!validationResult.IsValid)
+            return Results.ValidationProblem(validationResult.ToDictionary());
+
+        var gameState = gameRepository.GetGame(attackRequest.GameId);
+        if (gameState == null)
+            return Results.NotFound("Game not found");
+
+        var playerAttackResult = AttackHelper.ProcessAttack(gameState.OpponentBoats, attackRequest.AttackPosition);
+        var attackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, isPlayerAttack: true, isHit: playerAttackResult);
+
+        gameState.AttackHistory.Add(attackRecord);
+        gameRepository.UpdateGame(gameState);
+
+        return UpdateGameState(playerAttackResult, gameState);
     }
 
     public bool CheckIfAllBoatsSunk(List<Boat> boats)
@@ -54,21 +71,42 @@ public class GameService(IGameRepository gameRepository) : IGameService
         return new Position(random.Next(0, GridSize), random.Next(0, GridSize));
     }
 
-    public async Task RollbackTurnAsync(GameState gameState, Guid gameId)
+    public IResult RollbackTurn(Guid gameId)
     {
+        var gameState = gameRepository.GetGame(gameId);
+        
+        if (gameState == null)
+            return Results.NotFound("Game not found");
+
+        if (gameState.AttackHistory.Count == 0)
+            return Results.BadRequest("No moves to rollback");
+        
+        
         var lastAttack = gameState.AttackHistory.Last();
         gameState.AttackHistory.RemoveAt(gameState.AttackHistory.Count - 1);
 
         AttackHelper.UndoLastAttack(gameState, lastAttack);
 
-        await gameRepository.UpdateGame(gameState);
+        gameRepository.UpdateGame(gameState);
+        
+        return Results.Ok(new
+        {
+            gameState.GameId,
+            Message = "Last move rolled back successfully."
+        });
     }
 
-    public async Task<IResult> UpdateGameStateAsync(bool playerAttackResult, GameState gameState)
+    private IResult UpdateGameState(bool playerAttackResult, GameState gameState)
     {
+        var playerId = context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+    
+        if (playerId == null)
+            return Results.Unauthorized();
+        
         if (CheckIfAllBoatsSunk(gameState.OpponentBoats))
         {
             gameState.IsPlayerWinner = true;
+            gameRepository.UpdatePlayerWins(playerId);
             return Results.Ok(new
             {
                 gameState.GameId,
@@ -79,11 +117,11 @@ public class GameService(IGameRepository gameRepository) : IGameService
         }
 
         var computerAttackPosition = GenerateRandomPosition();
-        var computerAttackResult = ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
+        var computerAttackResult = AttackHelper.ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
         
         var attackRecord = new GameState.AttackRecord(computerAttackPosition, isPlayerAttack: false, isHit: computerAttackResult);
         gameState.AttackHistory.Add(attackRecord);
-        await gameRepository.UpdateGame(gameState);
+        gameRepository.UpdateGame(gameState);
 
         if (CheckIfAllBoatsSunk(gameState.PlayerBoats))
         {
@@ -111,26 +149,37 @@ public class GameService(IGameRepository gameRepository) : IGameService
         });
     }
 
-    public async Task<IResult> StartGame()
+    public IResult StartGame()
     {
         var gameId = Guid.NewGuid();
 
-        var playerBoats = GenerateRandomBoats();
         var computerBoats = GenerateRandomBoats();
 
         var gameState = new GameState(
             gameId: gameId,
-            playerBoats: playerBoats,
+            playerBoats: [],
             opponentBoats: computerBoats,
             isPlayerWinner: false,
             isOpponentWinner: false
         );
     
-        await gameRepository.AddGame(gameId, gameState);
+        gameRepository.AddGame(gameId, gameState);
 
         return Results.Ok(new
         {
             gameState.GameId, gameState.PlayerBoats
         });
+    }
+
+    public IResult GetLeaderboard()
+    {
+        var leaderboard = gameRepository.GetLeaderboard();
+        return Results.Ok(leaderboard);
+    }
+
+
+    public IResult PlaceBoats(List<Boat> playerBoats)
+    {
+        throw new NotImplementedException();
     }
 }
