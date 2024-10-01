@@ -30,9 +30,9 @@ builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins",
-        builder =>
+        corsPolicyBuilder =>
         {
-            builder.AllowAnyOrigin()
+            corsPolicyBuilder.AllowAnyOrigin()
                    .AllowAnyMethod()
                    .AllowAnyHeader()
                    .WithExposedHeaders("grpc-status", "grpc-message");
@@ -62,21 +62,21 @@ app.UseHttpsRedirection();
 
 app.MapHub<GameHub>("/gameHub");
 
-app.MapPost("/startGame", /*[Authorize]*/ async ([FromServices] IGameService gameService) => 
+app.MapPost("/startGame", [Authorize] async (IGameService gameService) => 
     await GameMethods.StartGame(gameService));
 
-app.MapPost("/attack", /*[Authorize]*/ async (AttackRequest attackRequest, IValidator<AttackRequest> validator, IGameRepository gameRepository, IGameService gameService) => 
+app.MapPost("/attack", [Authorize] async (AttackRequest attackRequest, IValidator<AttackRequest> validator, IGameRepository gameRepository, IGameService gameService) => 
         await GameMethods.ProcessAttack(attackRequest, validator, gameRepository, gameService))
 .Produces(200)
 .Produces(404)
 .ProducesValidationProblem();
 
-app.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId, [FromServices] IGameRepository gameRepository, [FromServices] IGameService gameService) =>
+app.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId, IGameRepository gameRepository, IGameService gameService) =>
 {
     await GameMethods.Rollback(gameRepository, gameService, gameId);
 });
 
-app.MapGet("/login", [Authorize] async (context) =>
+app.MapGet("/login",  async (context) =>
 {
     await AuthenticationMethods.Login(context, "/");
 });

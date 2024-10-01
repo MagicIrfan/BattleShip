@@ -19,7 +19,7 @@ public static class AttackHelper
     {
         if (lastAttack.IsPlayerAttack)
         {
-            var boat = gameState.ComputerBoats.FirstOrDefault(b => b.Positions.Any(p => p.X == lastAttack.AttackPosition.X && p.Y == lastAttack.AttackPosition.Y));
+            var boat = gameState.OpponentBoats.FirstOrDefault(b => b.Positions.Any(p => p.X == lastAttack.AttackPosition.X && p.Y == lastAttack.AttackPosition.Y));
             var position = boat?.Positions.FirstOrDefault(p => p.X == lastAttack.AttackPosition.X && p.Y == lastAttack.AttackPosition.Y);
             if (position != null)
                 position.IsHit = false;

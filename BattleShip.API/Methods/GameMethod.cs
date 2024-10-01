@@ -41,13 +41,9 @@ public static class GameMethods
         if (gameState == null)
             return Results.NotFound("Game not found");
 
-        var playerAttackResult = gameService.ProcessAttack(gameState.ComputerBoats, attackRequest.AttackPosition);
-        var attackRecord = new GameState.AttackRecord
-        {
-            AttackPosition = attackRequest.AttackPosition,
-            IsHit = playerAttackResult,
-            IsPlayerAttack = true
-        };
+        var playerAttackResult = gameService.ProcessAttack(gameState.OpponentBoats, attackRequest.AttackPosition);
+        var attackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, isPlayerAttack: true, isHit: playerAttackResult);
+
         gameState.AttackHistory.Add(attackRecord);
         await gameRepository.UpdateGame(gameState);
 

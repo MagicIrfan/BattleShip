@@ -66,7 +66,7 @@ public class GameService(IGameRepository gameRepository) : IGameService
 
     public async Task<IResult> UpdateGameStateAsync(bool playerAttackResult, GameState gameState)
     {
-        if (CheckIfAllBoatsSunk(gameState.ComputerBoats))
+        if (CheckIfAllBoatsSunk(gameState.OpponentBoats))
         {
             gameState.IsPlayerWinner = true;
             return Results.Ok(new
@@ -81,18 +81,13 @@ public class GameService(IGameRepository gameRepository) : IGameService
         var computerAttackPosition = GenerateRandomPosition();
         var computerAttackResult = ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
         
-        var attackRecord = new GameState.AttackRecord
-        {
-            AttackPosition = computerAttackPosition,
-            IsHit = computerAttackResult,
-            IsPlayerAttack = false
-        };
+        var attackRecord = new GameState.AttackRecord(computerAttackPosition, isPlayerAttack: false, isHit: computerAttackResult);
         gameState.AttackHistory.Add(attackRecord);
         await gameRepository.UpdateGame(gameState);
 
         if (CheckIfAllBoatsSunk(gameState.PlayerBoats))
         {
-            gameState.IsComputerWinner = true;
+            gameState.IsOpponentWinner = true;
             return Results.Ok(new
             {
                 gameState.GameId,
@@ -126,9 +121,9 @@ public class GameService(IGameRepository gameRepository) : IGameService
         var gameState = new GameState(
             gameId: gameId,
             playerBoats: playerBoats,
-            computerBoats: computerBoats,
+            opponentBoats: computerBoats,
             isPlayerWinner: false,
-            isComputerWinner: false
+            isOpponentWinner: false
         );
     
         await gameRepository.AddGame(gameId, gameState);

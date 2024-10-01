@@ -18,9 +18,9 @@ public class GameGrpcService(IGameService gameService, IGameRepository gameRepos
         var gameState = new GameState(
             gameId: gameId,
             playerBoats: playerBoats,
-            computerBoats: computerBoats,
+            opponentBoats: computerBoats,
             isPlayerWinner: false,
-            isComputerWinner: false
+            isOpponentWinner: false
         );
 
         await Task.Run(() => gameRepository.AddGame(gameId, gameState));
@@ -48,7 +48,7 @@ public class GameGrpcService(IGameService gameService, IGameRepository gameRepos
             throw new RpcException(new Status(StatusCode.NotFound, "Game not found"));
 
         var attackPosition = new Models.Position(request.AttackPosition.X,request.AttackPosition.Y);
-        var playerAttackResult = await Task.Run(() => gameService.ProcessAttack(gameState.ComputerBoats, attackPosition));
+        var playerAttackResult = await Task.Run(() => gameService.ProcessAttack(gameState.OpponentBoats, attackPosition));
 
         var computerAttackPosition = await Task.Run(gameService.GenerateRandomPosition);
         var computerAttackResult = await Task.Run(() => gameService.ProcessAttack(gameState.PlayerBoats, computerAttackPosition));
@@ -59,7 +59,7 @@ public class GameGrpcService(IGameService gameService, IGameRepository gameRepos
             PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
             ComputerAttackPosition = new Position { X = computerAttackPosition.X, Y = computerAttackPosition.Y },
             ComputerAttackResult = computerAttackResult ? "Hit" : "Miss",
-            IsPlayerWinner = await Task.Run(() => gameService.CheckIfAllBoatsSunk(gameState.ComputerBoats)),
+            IsPlayerWinner = await Task.Run(() => gameService.CheckIfAllBoatsSunk(gameState.OpponentBoats)),
             IsComputerWinner = await Task.Run(() => gameService.CheckIfAllBoatsSunk(gameState.PlayerBoats))
         };
 

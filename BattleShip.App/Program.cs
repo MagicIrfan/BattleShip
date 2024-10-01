@@ -5,10 +5,15 @@ using Grpc.Net.Client.Web;
 using Grpc.Net.Client;
 using BattleShip.Grpc;
 using BattleShip;
+using Microsoft.AspNetCore.SignalR.Client;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
+
+builder.Services.AddSingleton(sp => new HubConnectionBuilder()
+    .WithUrl("https://localhost:5134/gameHub")  
+    .Build());
 
 builder.Services.AddBlazoredModal();
 
