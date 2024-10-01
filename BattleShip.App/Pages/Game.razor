@@ -1,48 +1,44 @@
 ﻿@page "/game"
-@inject HttpClient Http
-@inject NavigationManager NavigationManager
-@inject Grpc.GameService.GameServiceClient GameClient
-@inject IModalService Modal
-@inject NavigationManager NavManager
+@inject IGameService GameService
 
 <PageTitle>BattleShip</PageTitle>
 
 <main>
-    @if (gameId != null)
+    @if (GameService.gameId != null)
     {
         <div class="grids">
             <div class="grid">
-                @for (int row = 0; row < playerGrid.Positions.Length; row++)
+                @for (int row = 0; row < GameService.playerGrid.Positions.Length; row++)
                 {
-                    @for (int col = 0; col < playerGrid.Positions[0].Length; col++)
+                    @for (int col = 0; col < GameService.playerGrid.Positions[0].Length; col++)
                     {
                         var currentRow = row;
                         var currentCol = col;
 
-                        Position playerPosition = playerGrid.Positions[col][row].Position;
+                        Position playerPosition = GameService.playerGrid.Positions[col][row].Position;
                         
                         <button disabled="disabled" class="cell"
-                                style="background-color: @(GetCellColor(playerPosition))">
-                            @if (IsBoatAtPosition(playerPosition))
+                                style="background-color: @(GameService.GetCellColor(playerPosition))">
+                            @if (GameService.IsBoatAtPosition(playerPosition))
                             {
-                                <span>@GetBoatSymbol(playerPosition)</span>
+                                <span>@GameService.GetBoatSymbol(playerPosition)</span>
                             }
                         </button>
                     }
                 }
             </div>
             <div class="grid">
-                @for (int row = 0; row < oponnentGrid.Positions.Length; row++)
+                @for (int row = 0; row < GameService.oponnentGrid.Positions.Length; row++)
                 {
-                    @for (int col = 0; col < oponnentGrid.Positions[0].Length; col++)
+                    @for (int col = 0; col < GameService.oponnentGrid.Positions[0].Length; col++)
                     {
                         var currentRow = row;
                         var currentCol = col;
 
-                        Position oponnentPosition = oponnentGrid.Positions[col][row].Position;
+                        Position oponnentPosition = GameService.oponnentGrid.Positions[col][row].Position;
 
-                        <button class="cell" @onclick="() => HandleCellClick(oponnentPosition)"
-                                style="background-color: @(GetCellColor(oponnentPosition))">
+                        <button class="cell" @onclick="() => GameService.Attack(oponnentPosition)"
+                                style="background-color: @(GameService.GetCellColor(oponnentPosition))">
                         </button>
                     }
                 }
@@ -102,180 +98,9 @@
     }
 </style>
 
-@code {
-    private Guid? gameId;
-    private List<Boat>? boats;
-    private Grid playerGrid;
-    private Grid oponnentGrid;
-
+@code{
     protected override async Task OnInitializedAsync()
     {
-        await StartGame();
-    }
-
-    private async Task StartGame()
-    {
-        var startGameRequest = new StartGameRequest();
-        var startGameResponse = await GameClient.StartGameAsync(startGameRequest);
-
-        playerGrid = new Grid(10, 10);
-        oponnentGrid = new Grid(10, 10);
-
-        if (startGameResponse != null)
-        {
-            gameId = new Guid(startGameResponse.GameId);
-            boats = startGameResponse.PlayerBoats.ToList();
-        }
-    }
-
-    private bool IsBoatAtPosition(Position position, Boat boat)
-    {
-        return boat.Positions.Any(pos => pos.X == position.X && pos.Y == position.Y);
-    }
-
-    private bool IsBoatAtPosition(Position position)
-    {
-        foreach (var boat in boats)
-        {
-            if (IsBoatAtPosition(position, boat))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Boat? GetBoatAtPosition(Position position)
-    {
-        foreach (var boat in boats)
-        {
-            if (IsBoatAtPosition(position, boat))
-            {
-                return boat;
-            }
-        }
-        return null;
-    }
-
-    private string GetBoatSymbol(Position position)
-    {
-        Boat? boat = GetBoatAtPosition(position);
-        return boat != null ? boat.Name[0].ToString() : "";
-    }
-
-    private string GetCellColor(Position position)
-    {
-        return position != null && position.IsHit ? "red" : "white";
-    }
-
-    private async Task HandleCellClick(Position position)
-    {
-        Console.WriteLine($"Clicked on cell: {position.X},{position.Y}");
-        await SendAttackRequest(position);
-    }
-
-    private Position? GetPosition(int col, int row, Boat boat)
-    {
-        Position? boatPosition = boat.Positions.FirstOrDefault(pos => pos.X == col && pos.Y == row);
-        if(boatPosition != null)
-        {
-            return boatPosition;
-        }
-        return new PositionWrapper(col, row).Position;
-    }
-
-    private Position? GetBoatPosition(int col, int row, Boat boat)
-    {
-        return boat.Positions.FirstOrDefault(pos => pos.X == col && pos.Y == row);
-    }
-
-    private bool BoatIsHit(int col, int row, Boat boat)
-    {
-        Position? boatPosition = GetBoatPosition(col, row, boat);
-        return boatPosition != null && boatPosition.IsHit;
-    }
-
-    private async Task SendAttackRequest(Position position)
-    {
-        var attackRequest = new AttackRequest
-        {
-            GameId = gameId?.ToString(),
-            AttackPosition = position
-        };
-
-        var attackResponse = await GameClient.AttackAsync(attackRequest);
-
-        if (attackResponse != null)
-        {
-            if (attackResponse.PlayerAttackResult == "Hit")
-            {
-                position.IsHit = true;
-                Console.WriteLine($"Hit : {position.X},{position.Y}");
-                oponnentGrid.Positions[position.X][position.Y] = new PositionWrapper(position);
-            }
-            if (attackResponse.ComputerAttackResult == "Hit")
-            {
-                Position playerBoatPosition = attackResponse.ComputerAttackPosition;
-                playerBoatPosition.IsHit = true;
-                playerGrid.Positions[playerBoatPosition.X][playerBoatPosition.Y] = new PositionWrapper(playerBoatPosition);
-            }
-            StateHasChanged();
-            await HandleGameResult(attackResponse);
-        }
-    }
-
-    private async Task HandleGameResult(AttackResponse responseData)
-    {
-
-        if (responseData.IsPlayerWinner || responseData.IsComputerWinner)
-        {
-            string title = "";
-            string message = "";
-            if (responseData.IsPlayerWinner)
-            {
-                title = "Victoire !";
-                message = "Vous avez gagné !";
-            }
-            if (responseData.IsComputerWinner)
-            {
-                title = "Défaite";
-                message = "Vous avez perdu";
-            }
-            
-            var modalResult = await ShowModal(title,message);
-
-            if (modalResult == "restart")
-            {
-                await StartGame();
-            }
-            else if (modalResult == "return")
-            {
-                NavManager.NavigateTo("/");
-            }
-        }
-    }
-
-    private async Task<string> ShowModal(string title, string message)
-    {
-        var parameters = new ModalParameters();
-        parameters.Add("Title", title);
-        parameters.Add("Message", message);
-
-        var options = new ModalOptions
-            {
-                HideCloseButton = true,
-                DisableBackgroundCancel = true
-            };
-
-
-        var modal = Modal.Show<GameModal>("Fin du jeu", parameters, options);
-        var result = await modal.Result;
-
-        if (result.Confirmed)
-        {
-            return result.Data.ToString();
-        }
-
-        return null;
+        await GameService.StartGame();
     }
 }
