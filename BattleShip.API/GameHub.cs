@@ -6,7 +6,7 @@ namespace BattleShip.API;
 
 public class GameHub(IGameService gameService) : Hub
 {
-    private static readonly Dictionary<Guid, MultiplayerGame> Games = new();
+    private static readonly Dictionary<Guid, GameState> Games = new();
 
     public async Task JoinGame(Guid gameId, string playerId, string playerName)
     {
@@ -14,27 +14,27 @@ public class GameHub(IGameService gameService) : Hub
         {
             var gameState = new GameState(
                 gameId: gameId,
-                playerBoats: gameService.GenerateRandomBoats(),
-                opponentBoats: [], 
-                isPlayerWinner: false,
-                isOpponentWinner: false
+                playerOneBoats: gameService.GenerateRandomBoats(),
+                playerTwoBoats: [], 
+                isPlayerOneWinner: false,
+                isPlayerTwoWinner: false,
+                playerOneId: playerId,
+                playerTwoId: ""
             );
 
-            multiplayerGame = new MultiplayerGame(player1Id: playerId, player1Name: playerName, gameState: gameState);
-            Games[gameId] = multiplayerGame;
+            Games[gameId] = gameState;
         }
         else
         {
-            multiplayerGame.AssignPlayer2(playerId, playerName);
-            multiplayerGame.State.OpponentBoats = gameService.GenerateRandomBoats();
+            multiplayerGame.AssignPlayer2(playerId);
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, gameId.ToString());
 
-        if (multiplayerGame.IsFull())
+        if (multiplayerGame != null && multiplayerGame.IsFull())
         {
-            await Clients.Client(Context.ConnectionId).SendAsync("InitializeGame", multiplayerGame.Player1Id == playerId ? multiplayerGame.State.PlayerBoats : multiplayerGame.State.OpponentBoats);
-            await Clients.OthersInGroup(gameId.ToString()).SendAsync("InitializeGame", multiplayerGame.Player1Id == playerId ? multiplayerGame.State.OpponentBoats : multiplayerGame.State.PlayerBoats);
+            await Clients.Client(Context.ConnectionId).SendAsync("InitializeGame", multiplayerGame.PlayerOneId == playerId ? multiplayerGame.PlayerOneBoats : multiplayerGame.PlayerTwoBoats);
+            await Clients.OthersInGroup(gameId.ToString()).SendAsync("InitializeGame", multiplayerGame.PlayerOneId == playerId ? multiplayerGame.PlayerTwoBoats : multiplayerGame.PlayerOneBoats);
 
             await Clients.Group(gameId.ToString()).SendAsync("GameStarted", gameId);
         }
@@ -67,4 +67,6 @@ public class GameHub(IGameService gameService) : Hub
         Games.Remove(gameId);
         await Clients.Group(gameId.ToString()).SendAsync("PlayerLeft", playerId);
     }
+    
+    
 }

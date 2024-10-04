@@ -7,18 +7,17 @@ namespace BattleShip.API.Services;
 public interface IGameService
 {
     List<Boat> GenerateRandomBoats();
-    Task<IResult> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator);
-    bool CheckIfAllBoatsSunk(List<Boat> boats);
-    Position GenerateRandomPosition();
+    Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator);
     IResult RollbackTurn(Guid gameId);
-    IResult StartGame();
+    Guid StartGame();
     IResult GetLeaderboard();
-    IResult PlaceBoats(List<Boat> playerBoats);
+    IResult PlaceBoats(List<Boat> playerBoats, Guid gameId);
 }
 
-public class GameService(IGameRepository gameRepository, HttpContext context) : IGameService
+public class GameService(IGameRepository gameRepository, IHttpContextAccessor httpContextAccessor) : IGameService
 {
     private const int GridSize = 10;
+    private HttpContext Context => httpContextAccessor.HttpContext!;
 
     public List<Boat> GenerateRandomBoats()
     {
@@ -39,36 +38,98 @@ public class GameService(IGameRepository gameRepository, HttpContext context) : 
 
         return boats;
     }
-
-    public async Task<IResult> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator)
+    
+    private AttackRequest GenerateIaAttackRequest(GameState gameState)
     {
-        var validationResult = await validator.ValidateAsync(attackRequest);
+        var random = new Random();
+        var history = gameState.AttackHistory.Where(x => x.PlayerId == "IA").ToList();
+    
+        var targetPositions = new HashSet<Position>();
+    
+        if (history.Any(h => h.IsHit))
+        {
+            var lastHit = history.Last(h => h.IsHit);
+            var hitPosition = lastHit.AttackPosition;
 
+            targetPositions.Add(new Position(hitPosition.X - 1, hitPosition.Y)); 
+            targetPositions.Add(new Position(hitPosition.X + 1, hitPosition.Y)); 
+            targetPositions.Add(new Position(hitPosition.X, hitPosition.Y - 1)); 
+            targetPositions.Add(new Position(hitPosition.X, hitPosition.Y + 1)); 
+        }
+
+        if (targetPositions.Count == 0)
+        {
+            while (targetPositions.Count < 5)
+            {
+                var attackPosition = new Position(random.Next(0, 10), random.Next(0, 10));
+                targetPositions.Add(attackPosition);
+            }
+        }
+
+        var selectedPosition = targetPositions.FirstOrDefault(pos => 
+            pos.X is >= 0 and < 10 && pos.Y is >= 0 and < 10 &&
+            !history.Any(h => h.AttackPosition.X == pos.X && h.AttackPosition.Y == pos.Y)) ?? new Position(random.Next(0, 10), random.Next(0, 10));
+
+        return new AttackRequest(selectedPosition);
+    }
+
+
+    public async Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator)
+    {
+        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        if (string.IsNullOrEmpty(playerId))
+            throw new UnauthorizedAccessException("User not recognized");
+
+        var validationResult = await validator.ValidateAsync(attackRequest);
         if (!validationResult.IsValid)
-            return Results.ValidationProblem(validationResult.ToDictionary());
+            throw new ValidationException("Invalid attack request", validationResult.Errors);
 
         var gameState = gameRepository.GetGame(attackRequest.GameId);
         if (gameState == null)
-            return Results.NotFound("Game not found");
+            throw new KeyNotFoundException("Game not found");
+        
+        if (attackRequest.AttackPosition == null) GenerateIaAttackRequest(gameState);
 
-        var playerAttackResult = AttackHelper.ProcessAttack(gameState.OpponentBoats, attackRequest.AttackPosition);
-        var attackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, isPlayerAttack: true, isHit: playerAttackResult);
+        var boats = playerId == gameState.PlayerOneId 
+            ? gameState.PlayerOneBoats 
+            : playerId == gameState.PlayerTwoId 
+                ? gameState.PlayerTwoBoats 
+                : throw new UnauthorizedAccessException("Player not recognized in this game.");
+
+        var (isHit, isSunk, updatedBoats) = AttackHelper.ProcessAttack(boats, attackRequest.AttackPosition);
+
+        var attackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, playerId, isHit, isSunk);
+        var isWinner = false;
+
+        if (playerId.Equals(gameState.PlayerOneId))
+        {
+            gameState.PlayerOneBoats = updatedBoats;
+            if (CheckIfAllBoatsSunk(updatedBoats))
+            {
+                isWinner = true;
+                gameState.IsPlayerOneWinner = isWinner;
+            }
+        }
+            
+        else if (playerId.Equals(gameState.PlayerTwoId) || gameState.PlayerTwoId!.Equals("IA"))
+        {
+            gameState.PlayerTwoBoats = updatedBoats;
+            if (CheckIfAllBoatsSunk(updatedBoats))
+            {
+                isWinner = true;
+                gameState.IsPlayerTwoWinner = isWinner;
+            }
+        }
 
         gameState.AttackHistory.Add(attackRecord);
         gameRepository.UpdateGame(gameState);
 
-        return UpdateGameState(playerAttackResult, gameState);
+        return (isHit, isSunk, isWinner); 
     }
 
-    public bool CheckIfAllBoatsSunk(List<Boat> boats)
+    private bool CheckIfAllBoatsSunk(List<Boat> boats)
     {
         return boats.All(b => b.Positions.All(p => p.IsHit));
-    }
-
-    public Position GenerateRandomPosition()
-    {
-        var random = new Random();
-        return new Position(random.Next(0, GridSize), random.Next(0, GridSize));
     }
 
     public IResult RollbackTurn(Guid gameId)
@@ -81,11 +142,18 @@ public class GameService(IGameRepository gameRepository, HttpContext context) : 
         if (gameState.AttackHistory.Count == 0)
             return Results.BadRequest("No moves to rollback");
         
+        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
+        if (string.IsNullOrEmpty(playerId))
+            throw new UnauthorizedAccessException("User not recognized");
         
         var lastAttack = gameState.AttackHistory.Last();
         gameState.AttackHistory.RemoveAt(gameState.AttackHistory.Count - 1);
 
-        AttackHelper.UndoLastAttack(gameState, lastAttack);
+        if (lastAttack.PlayerId.Equals(gameState.PlayerOneId))
+            AttackHelper.UndoLastAttack(gameState.PlayerOneBoats, lastAttack);
+        else if (lastAttack.PlayerId.Equals(gameState.PlayerTwoId))
+            AttackHelper.UndoLastAttack(gameState.PlayerTwoBoats, lastAttack);
 
         gameRepository.UpdateGame(gameState);
         
@@ -96,80 +164,31 @@ public class GameService(IGameRepository gameRepository, HttpContext context) : 
         });
     }
 
-    private IResult UpdateGameState(bool playerAttackResult, GameState gameState)
-    {
-        var playerId = context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-    
-        if (playerId == null)
-            return Results.Unauthorized();
-        
-        if (CheckIfAllBoatsSunk(gameState.OpponentBoats))
-        {
-            gameState.IsPlayerWinner = true;
-            gameRepository.UpdatePlayerWins(playerId);
-            return Results.Ok(new
-            {
-                gameState.GameId,
-                PlayerAttackResult = "Hit",
-                IsPlayerWinner = true,
-                IsComputerWinner = false
-            });
-        }
-
-        var computerAttackPosition = GenerateRandomPosition();
-        var computerAttackResult = AttackHelper.ProcessAttack(gameState.PlayerBoats, computerAttackPosition);
-        
-        var attackRecord = new GameState.AttackRecord(computerAttackPosition, isPlayerAttack: false, isHit: computerAttackResult);
-        gameState.AttackHistory.Add(attackRecord);
-        gameRepository.UpdateGame(gameState);
-
-        if (CheckIfAllBoatsSunk(gameState.PlayerBoats))
-        {
-            gameState.IsOpponentWinner = true;
-            return Results.Ok(new
-            {
-                gameState.GameId,
-                PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
-                ComputerAttackPosition = computerAttackPosition,
-                ComputerAttackResult = "Hit",
-                IsPlayerWinner = false,
-                IsComputerWinner = true
-            });
-        }
-
-        return Results.Ok(new
-        {
-            gameState.GameId,
-            PlayerAttackResult = playerAttackResult ? "Hit" : "Miss",
-            ComputerAttackPosition = computerAttackPosition,
-            ComputerAttackResult = computerAttackResult ? "Hit" : "Miss",
-            IsPlayerWinner = false,
-            IsComputerWinner = false,
-            gameState.AttackHistory
-        });
-    }
-
-    public IResult StartGame()
+    public Guid StartGame()
     {
         var gameId = Guid.NewGuid();
+        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
+        if (string.IsNullOrEmpty(playerId))
+            throw new UnauthorizedAccessException("User not recognized");
 
         var computerBoats = GenerateRandomBoats();
 
         var gameState = new GameState(
             gameId: gameId,
-            playerBoats: [],
-            opponentBoats: computerBoats,
-            isPlayerWinner: false,
-            isOpponentWinner: false
+            playerOneBoats: [],
+            playerTwoBoats: computerBoats,
+            isPlayerOneWinner: false,
+            isPlayerTwoWinner: false,
+            playerOneId: playerId,
+            playerTwoId: "IA"
         );
-    
+
         gameRepository.AddGame(gameId, gameState);
 
-        return Results.Ok(new
-        {
-            gameState.GameId, gameState.PlayerBoats
-        });
+        return gameState.GameId;
     }
+
 
     public IResult GetLeaderboard()
     {
@@ -178,8 +197,19 @@ public class GameService(IGameRepository gameRepository, HttpContext context) : 
     }
 
 
-    public IResult PlaceBoats(List<Boat> playerBoats)
+    public IResult PlaceBoats(List<Boat> playerBoats, Guid gameId)
     {
-        throw new NotImplementedException();
+        if (playerBoats.Count != 5) 
+            return Results.BadRequest("Number of boats should be equal to five.");
+
+        if (playerBoats.Any(boat => !BoatPlacementHelper.PlaceBoat(boat, playerBoats)))
+            return Results.BadRequest("Boat placements are impossible.");
+
+        var gameState = gameRepository.GetGame(gameId);
+        if (gameState != null) gameState.PlayerOneBoats = playerBoats;
+        else return Results.BadRequest("Non-existent game.");
+        gameRepository.UpdateGame(gameState);
+
+        return Results.Ok();
     }
 }

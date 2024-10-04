@@ -12,8 +12,10 @@ public interface IAuthenticationService
     IResult Profile();
 }
 
-public class AuthenticationService(HttpContext context) : IAuthenticationService
+public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : IAuthenticationService
 {
+    private HttpContext Context => httpContextAccessor.HttpContext!;
+    
     public async Task Login()
     {
         const string returnUrl = "/";
@@ -22,7 +24,7 @@ public class AuthenticationService(HttpContext context) : IAuthenticationService
             .WithRedirectUri(returnUrl)
             .Build();
 
-        await context.ChallengeAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
+        await Context.ChallengeAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
     }
 
     public async Task Logout()
@@ -31,13 +33,18 @@ public class AuthenticationService(HttpContext context) : IAuthenticationService
             .WithRedirectUri("/")
             .Build();
 
-        await context.SignOutAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
-        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await Context.SignOutAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
+        await Context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
 
     public IResult Profile()
     {
-        var user = context.User;
+        foreach (var claim in Context.User.Claims)
+        {
+            Console.WriteLine("Claims: " + claim);
+        }
+        
+        var user = Context.User;
         return Results.Ok(new
         {
             user.Identity?.Name,
