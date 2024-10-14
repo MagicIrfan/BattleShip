@@ -14,7 +14,7 @@ namespace BattleShip.Models
     {
         public Guid GameId { get; set; } = gameId;
         public string PlayerOneId { get; set; } = playerOneId;
-        public string? PlayerTwoId { get; set; } = playerTwoId;
+        public string PlayerTwoId { get; set; } = playerTwoId;
         public List<Boat> PlayerOneBoats { get; set; } = playerOneBoats;
         public List<Boat> PlayerTwoBoats { get; set; } = playerTwoBoats; 
         public bool IsPlayerOneWinner { get; set; } = isPlayerOneWinner;

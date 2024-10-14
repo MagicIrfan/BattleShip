@@ -79,11 +79,11 @@ gameMethodsGroup.MapPost("/startGame", [Authorize](IGameService gameService) =>
     }
 });
 
-gameMethodsGroup.MapPost("/placeBoats", [Authorize] ([FromBody] List<Boat> playerBoats, [FromQuery] Guid gameId, [FromServices] IGameService gameService) =>
+gameMethodsGroup.MapPost("/placeBoats", [Authorize] async ([FromBody] List<Boat> playerBoats, [FromQuery] Guid gameId, [FromServices] IGameService gameService) =>
 {
     try
     {
-        return gameService.PlaceBoats(playerBoats, gameId);
+        return await gameService.PlaceBoats(playerBoats, gameId);
     }
     catch (Exception ex)
     {

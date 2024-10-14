@@ -7,14 +7,21 @@ namespace BattleShip.API;
 public class GameHub(IGameService gameService) : Hub
 {
     private static readonly Dictionary<Guid, GameState> Games = new();
+    
+    
 
-    public async Task JoinGame(Guid gameId, string playerId, string playerName)
+    public async Task JoinGame(Guid gameId)
     {
+        var playerId = Context.User?.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
+        if (string.IsNullOrEmpty(playerId))
+            throw new UnauthorizedAccessException("User not recognized");
+        
         if (!Games.TryGetValue(gameId, out var multiplayerGame))
         {
             var gameState = new GameState(
                 gameId: gameId,
-                playerOneBoats: gameService.GenerateRandomBoats(),
+                playerOneBoats: [],
                 playerTwoBoats: [], 
                 isPlayerOneWinner: false,
                 isPlayerTwoWinner: false,
@@ -26,18 +33,29 @@ public class GameHub(IGameService gameService) : Hub
         }
         else
         {
-            multiplayerGame.AssignPlayer2(playerId);
+            if (!multiplayerGame.IsFull())
+                multiplayerGame.AssignPlayer2(playerId);
+            else 
+                await Clients.Client(Context.ConnectionId).SendAsync("Game is full");
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, gameId.ToString());
 
         if (multiplayerGame != null && multiplayerGame.IsFull())
         {
-            await Clients.Client(Context.ConnectionId).SendAsync("InitializeGame", multiplayerGame.PlayerOneId == playerId ? multiplayerGame.PlayerOneBoats : multiplayerGame.PlayerTwoBoats);
-            await Clients.OthersInGroup(gameId.ToString()).SendAsync("InitializeGame", multiplayerGame.PlayerOneId == playerId ? multiplayerGame.PlayerTwoBoats : multiplayerGame.PlayerOneBoats);
-
-            await Clients.Group(gameId.ToString()).SendAsync("GameStarted", gameId);
+            await Clients.Group(gameId.ToString()).SendAsync("InitializeGame");
         }
+    }
+
+    public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId)
+    {
+        var playerId = Context.User?.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
+        if (string.IsNullOrEmpty(playerId))
+            throw new UnauthorizedAccessException("User not recognized");
+        
+        await gameService.PlaceBoats(playerBoats, gameId);
+        await Clients.Group(gameId.ToString()).SendAsync("Boat placed", playerId);
     }
 
     public async Task SendAttack(Guid gameId, string attackerId, int x, int y)
