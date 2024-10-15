@@ -1,6 +1,8 @@
 ﻿@page "/"
 @inject IJSRuntime JS
-@inject NavigationManager NavManager
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -9,16 +11,32 @@
         <h1 id="title">Bataille Navale</h1>
     </header>
     <div class="buttons">
-        <button role="button" @onclick="StartGame">Jouer</button>
+        <button role="button" @onclick="HandleGameClick">Jouer contre l'IA'</button>
         <button role="button" @onclick="CloseGame">Quitter</button>
     </div>
 </main>
 
 @code {
-    private void StartGame()
+    // Cette méthode est déclenchée lorsque l'utilisateur clique sur "Jouer contre l'IA"
+    private async Task HandleGameClick()
     {
-        NavManager.NavigateTo("/game");
+        // Récupérer l'état de l'utilisateur
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Vérifier si l'utilisateur est authentifié
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            // Si l'utilisateur est authentifié, le rediriger vers la page de jeu
+            Navigation.NavigateTo("/game");
+        }
+        else
+        {
+            // Si l'utilisateur n'est pas authentifié, le rediriger vers la page de login
+            Navigation.NavigateTo("/authentication/login");
+        }
     }
+
 
     private async void CloseGame()
     {

@@ -17,13 +17,12 @@ builder.Services.AddSingleton(sp => new HubConnectionBuilder()
 
 builder.Services.AddBlazoredModal();
 
-/*builder.Services.AddMsalAuthentication(options => {
-    builder.Configuration.Bind("AzureAd", options.ProviderOptions);
-    options.ProviderOptions.DefaultAccessTokenScopes.Add("openid");
-    options.ProviderOptions.DefaultAccessTokenScopes.Add("profile");
-    options.ProviderOptions.DefaultAccessTokenScopes.Add("email");
-    options.ProviderOptions.DefaultAccessTokenScopes.Add("https://YOUR_AUTH0_DOMAIN/userinfo");
-});*/
+builder.Services.AddOidcAuthentication(options =>
+{
+    builder.Configuration.Bind("Auth0", options.ProviderOptions);
+    Console.WriteLine(options.ProviderOptions.Authority);
+    options.ProviderOptions.DefaultScopes.Add("openid");
+});
 
 builder.Services.AddScoped<IGameModalService, GameModalService>();
 builder.Services.AddScoped<IGameService, GameService>();
