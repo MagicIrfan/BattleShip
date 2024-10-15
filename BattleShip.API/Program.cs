@@ -3,6 +3,7 @@ using BattleShip.API;
 using BattleShip.API.Services;
 using BattleShip.Models;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ValidationException = FluentValidation.ValidationException;
@@ -22,10 +23,14 @@ builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
 
-builder.Services.AddAuth0WebAppAuthentication(options =>
+builder.Services.AddAuthentication(options =>
 {
-    options.Domain = builder.Configuration["Auth0:Domain"] ?? string.Empty;
-    options.ClientId = builder.Configuration["Auth0:ClientId"] ?? string.Empty;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+{
+    options.Authority = "https://dev-dd243sihmby5ljlg.us.auth0.com/";
+    options.Audience = "https://localhost:5134/api";
 });
 
 builder.Services.AddControllersWithViews();
