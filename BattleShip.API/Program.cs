@@ -29,6 +29,7 @@ builder.Services.AddAuthentication(options =>
 }).AddJwtBearer(options =>
 {
     options.Authority = "https://dev-dd243sihmby5ljlg.us.auth0.com/";
+    options.Audience = "https://localhost:5134/api";
 });
 
 builder.Services.AddControllersWithViews();
@@ -66,11 +67,11 @@ app.MapHub<GameHub>("/gameHub");
 
 var gameMethodsGroup = app.MapGroup("/api/game/");
 
-gameMethodsGroup.MapPost("/startGame", [Authorize]([FromBody] StartGameRequest request, IValidator<StartGameRequest> validator, [FromServices] IGameService gameService) =>
+gameMethodsGroup.MapPost("/startGame", [Authorize](/*[FromBody] StartGameRequest request, IValidator<StartGameRequest> validator, */[FromServices] IGameService gameService) =>
 {
     try
     {
-        return Results.Ok(gameService.StartGame(request, validator));
+        return Results.Ok(gameService.StartGame(/*request, validator*/));
     }
     catch (UnauthorizedAccessException e)
     {

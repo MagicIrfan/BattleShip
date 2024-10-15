@@ -1,4 +1,5 @@
-﻿using BattleShip.API.Helpers;
+﻿using System.Security.Claims;
+using BattleShip.API.Helpers;
 using BattleShip.Models;
 using FluentValidation;
 using Microsoft.IdentityModel.Tokens;
@@ -11,7 +12,7 @@ public interface IGameService
         IValidator<AttackRequest> validator);
 
     Task<IResult> RollbackTurn(Guid gameId);
-    Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
+    Task<Guid> StartGame(/*StartGameRequest request, IValidator<StartGameRequest> validator*/);
     Task<IResult> GetLeaderboard();
     Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId);
 }
@@ -84,17 +85,27 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         }));
     }
 
-    public async Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator)
+    public async Task<Guid> StartGame(/*StartGameRequest request, IValidator<StartGameRequest> validator*/)
     {
-        var validationResult = await validator.ValidateAsync(request);
+        /*var validationResult = await validator.ValidateAsync(request);
         if (!validationResult.IsValid)
-            throw new ValidationException("Invalid request", validationResult.Errors);
+            throw new ValidationException("Invalid request", validationResult.Errors);*/
         
         var gameId = Guid.NewGuid();
-        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        foreach (var claim in Context.User.Claims)
+        {
+            Console.WriteLine("Claims: " + claim);
+        }
+        
+        //var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        
+        var playerId = Context.User.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
 
         if (string.IsNullOrEmpty(playerId))
-            throw new UnauthorizedAccessException("User not recognized");
+            throw new Exception("User not recognized");
 
         var computerBoats = GameHelper.GenerateRandomBoats();
 
@@ -106,11 +117,11 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             isPlayerTwoWinner: false,
             playerOneId: playerId,
             playerTwoId: "IA",
-            difficulty: request.Difficulty
+            difficulty: 1//request.Difficulty
         );
         
-        if (request.SizeGrid.HasValue)
-            gameState.GridSize = request.SizeGrid.Value;
+        /*if (request.SizeGrid.HasValue)
+            gameState.GridSize = request.SizeGrid.Value;*/
 
         gameRepository.AddGame(gameId, gameState);
 
