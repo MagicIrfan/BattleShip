@@ -25,7 +25,8 @@ public class GameHub(IGameService gameService, IValidator<AttackRequest> validat
                 isPlayerOneWinner: false,
                 isPlayerTwoWinner: false,
                 playerOneId: playerId,
-                playerTwoId: ""
+                playerTwoId: "",
+                difficulty: 0
             )
             {
                 IsMultiplayer = true

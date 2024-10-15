@@ -1,4 +1,3 @@
-using Auth0.AspNetCore.Authentication;
 using BattleShip.API;
 using BattleShip.API.Services;
 using BattleShip.Models;
@@ -30,7 +29,6 @@ builder.Services.AddAuthentication(options =>
 }).AddJwtBearer(options =>
 {
     options.Authority = "https://dev-dd243sihmby5ljlg.us.auth0.com/";
-    options.Audience = "https://localhost:5134/api";
 });
 
 builder.Services.AddControllersWithViews();
@@ -68,11 +66,11 @@ app.MapHub<GameHub>("/gameHub");
 
 var gameMethodsGroup = app.MapGroup("/api/game/");
 
-gameMethodsGroup.MapPost("/startGame", [Authorize](IGameService gameService) =>
+gameMethodsGroup.MapPost("/startGame", [Authorize]([FromBody] StartGameRequest request, IValidator<StartGameRequest> validator, [FromServices] IGameService gameService) =>
 {
     try
     {
-        return Results.Ok(gameService.StartGame());
+        return Results.Ok(gameService.StartGame(request, validator));
     }
     catch (UnauthorizedAccessException)
     {
@@ -120,7 +118,7 @@ gameMethodsGroup.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId
     }
 });
 
-gameMethodsGroup.MapPost("/attack", [Authorize] async (AttackRequest attackRequest, IValidator<AttackRequest> validator,[FromServices] IGameService gameService) =>
+gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackRequest attackRequest, IValidator<AttackRequest> validator,[FromServices] IGameService gameService) =>
 {
     try
     {
@@ -152,6 +150,6 @@ var authenticationMethodsGroup = app.MapGroup("/api/auth/");
 
 authenticationMethodsGroup.MapGet("/login", async ([FromServices] IAuthenticationService authService) => await authService.Login());
 authenticationMethodsGroup.MapPost("/logout", [Authorize] async ([FromServices] IAuthenticationService authService) => await authService.Logout());
-authenticationMethodsGroup.MapGet("/profile", [Authorize] ([FromServices] IAuthenticationService authService) => authService.Profile());
+authenticationMethodsGroup.MapGet("/profile", [Authorize] async ([FromServices] IAuthenticationService authService) => await authService.Profile());
 
 app.Run();

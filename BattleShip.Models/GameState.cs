@@ -10,7 +10,8 @@ namespace BattleShip.Models
         List<Boat> playerOneBoats,
         List<Boat> playerTwoBoats,
         bool isPlayerOneWinner,
-        bool isPlayerTwoWinner)
+        bool isPlayerTwoWinner,
+        int difficulty)
     {
         public Guid GameId { get; set; } = gameId;
         public string PlayerOneId { get; set; } = playerOneId;
@@ -20,6 +21,8 @@ namespace BattleShip.Models
         public bool IsPlayerOneWinner { get; set; } = isPlayerOneWinner;
         public bool IsPlayerTwoWinner { get; set; } = isPlayerTwoWinner;
         public bool IsMultiplayer { get; set; } = false;
+        public int GridSize { get; set; } = 10;
+        public int Difficulty { get; set; } = difficulty;
         public List<AttackRecord> AttackHistory { get; set; } = [];
 
         public class AttackRecord(Position attackPosition, string playerId, bool isHit, bool isSunk)

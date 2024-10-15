@@ -9,7 +9,7 @@ public interface IAuthenticationService
 {
     Task Login();
     Task Logout();
-    IResult Profile();
+    Task<IResult> Profile();
 }
 
 public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : IAuthenticationService
@@ -37,7 +37,7 @@ public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : I
         await Context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
 
-    public IResult Profile()
+    public Task<IResult> Profile()
     {
         foreach (var claim in Context.User.Claims)
         {
@@ -48,10 +48,10 @@ public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : I
     
         var pictureClaim = user.Claims.FirstOrDefault(c => c.Type == "picture");
 
-        return Results.Ok(new
+        return Task.FromResult(Results.Ok(new
         {
             user.Identity?.Name,
             picture = pictureClaim?.Value
-        });
+        }));
     }
 }

@@ -11,7 +11,7 @@ public interface IGameService
         IValidator<AttackRequest> validator);
 
     Task<IResult> RollbackTurn(Guid gameId);
-    Task<Guid> StartGame();
+    Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
     Task<IResult> GetLeaderboard();
     Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId);
 }
@@ -49,7 +49,6 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         return (isHit, isSunk, isWinner);
     }
 
-
     public Task<IResult> RollbackTurn(Guid gameId)
     {
         var gameState = gameRepository.GetGame(gameId);
@@ -85,8 +84,12 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         }));
     }
 
-    public Task<Guid> StartGame()
+    public async Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator)
     {
+        var validationResult = await validator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+            throw new ValidationException("Invalid request", validationResult.Errors);
+        
         var gameId = Guid.NewGuid();
         var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
 
@@ -102,22 +105,24 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             isPlayerOneWinner: false,
             isPlayerTwoWinner: false,
             playerOneId: playerId,
-            playerTwoId: "IA"
+            playerTwoId: "IA",
+            difficulty: request.Difficulty
         );
+        
+        if (request.SizeGrid.HasValue)
+            gameState.GridSize = request.SizeGrid.Value;
 
         gameRepository.AddGame(gameId, gameState);
 
-        return Task.FromResult(gameState.GameId);
+        return gameState.GameId;
     }
-
 
     public Task<IResult> GetLeaderboard()
     {
         var leaderboard = gameRepository.GetLeaderboard();
         return Task.FromResult(Results.Ok(leaderboard));
     }
-
-
+    
     public Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId)
     {
         var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;

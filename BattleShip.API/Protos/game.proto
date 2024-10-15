@@ -10,7 +10,10 @@ service GameService {
   rpc PlaceBoats(PlaceBoatsRequest) returns (PlaceBoatsResponse);
 }
 
-message StartGameRequest { }
+message StartGameRequest { 
+  int32 sizeGrid = 1;
+  int32 difficulty = 2;
+}
 
 message StartGameResponse {
   string gameId = 1;
