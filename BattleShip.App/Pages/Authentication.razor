@@ -16,6 +16,22 @@
             Navigation.NavigateTo($"{authority}/v2/logout?client_id={clientId}");
         }
     </LogOut>
+
+    <LoggingIn>
+        <p>Connexion avec Auth0 en cours...</p>
+    </LoggingIn>
+
+    <LogInFailed>
+        <p>Échec de la connexion. Veuillez réessayer. @context</p>
+    </LogInFailed>
+
+    <LogOutSucceeded>
+        <p>Vous avez été déconnecté avec succès.</p>
+    </LogOutSucceeded>
+
+    <LogOutFailed>
+        <p>Échec de la déconnexion. Veuillez réessayer.</p>
+    </LogOutFailed>
 </RemoteAuthenticatorView>
 
 @code {

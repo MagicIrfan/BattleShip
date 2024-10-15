@@ -17,11 +17,11 @@ builder.Services.AddSingleton(sp => new HubConnectionBuilder()
 
 builder.Services.AddBlazoredModal();
 
+builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddOidcAuthentication(options =>
 {
     builder.Configuration.Bind("Auth0", options.ProviderOptions);
     Console.WriteLine(options.ProviderOptions.Authority);
-    options.ProviderOptions.DefaultScopes.Add("openid");
 });
 
 builder.Services.AddScoped<IGameModalService, GameModalService>();
