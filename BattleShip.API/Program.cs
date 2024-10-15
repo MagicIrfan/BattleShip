@@ -74,9 +74,9 @@ gameMethodsGroup.MapPost("/startGame", [Authorize](IGameService gameService) =>
     {
         return Results.Ok(gameService.StartGame());
     }
-    catch (UnauthorizedAccessException)
+    catch (UnauthorizedAccessException e)
     {
-        return Results.Unauthorized();
+        return Results.Problem(e.Message);
     }
     catch (Exception ex)
     {

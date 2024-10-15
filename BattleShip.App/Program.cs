@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Blazored.Modal;
+using Blazored.SessionStorage;
 using Grpc.Net.Client.Web;
 using Grpc.Net.Client;
 using BattleShip;
@@ -22,10 +23,14 @@ builder.Services.AddOidcAuthentication(options =>
 {
     builder.Configuration.Bind("Auth0", options.ProviderOptions);
     Console.WriteLine(options.ProviderOptions.Authority);
+    options.ProviderOptions.AdditionalProviderParameters.Add("audience", builder.Configuration["Auth0:Audience"]);
 });
 
 builder.Services.AddScoped<IGameModalService, GameModalService>();
 builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddBlazoredSessionStorage();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped(sp =>
