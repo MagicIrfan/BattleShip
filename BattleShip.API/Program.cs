@@ -72,9 +72,9 @@ gameMethodsGroup.MapPost("/startGame", [Authorize]([FromBody] StartGameRequest r
     {
         return Results.Ok(gameService.StartGame(request, validator));
     }
-    catch (UnauthorizedAccessException)
+    catch (UnauthorizedAccessException e)
     {
-        return Results.Unauthorized();
+        return Results.Problem(e.Message);
     }
     catch (Exception ex)
     {
