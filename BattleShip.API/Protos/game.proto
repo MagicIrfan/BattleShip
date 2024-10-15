@@ -5,13 +5,38 @@ option csharp_namespace = "BattleShip.Grpc";
 service GameService {
   rpc StartGame (StartGameRequest) returns (StartGameResponse);
   rpc Attack (AttackRequest) returns (AttackResponse);
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (LeaderboardResponse);
+  rpc RollbackTurn(RollbackTurnRequest) returns (RollbackTurnResponse);
+  rpc PlaceBoats(PlaceBoatsRequest) returns (PlaceBoatsResponse);
 }
 
 message StartGameRequest { }
 
 message StartGameResponse {
   string gameId = 1;
-  repeated Boat playerBoats = 2;
+}
+
+message GetLeaderboardRequest { }
+
+message LeaderboardResponse {
+  string message = 1;
+}
+
+message RollbackTurnRequest {
+  string gameId = 1;
+}
+
+message RollbackTurnResponse {
+  string message = 1;
+}
+
+message PlaceBoatsRequest {
+  repeated Boat playerBoats = 1;
+  string  gameId = 2;
+}
+
+message PlaceBoatsResponse {
+  string message = 1;
 }
 
 message AttackRequest {
@@ -20,8 +45,9 @@ message AttackRequest {
 }
 
 message AttackResponse {
-  string playerAttackResult = 1;
-  bool isPlayerWinner = 2;
+  bool isHit = 1;
+  bool isSunk = 2;
+  bool isWinner = 3;
 }
 
 message Boat {

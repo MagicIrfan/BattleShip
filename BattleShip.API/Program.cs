@@ -91,13 +91,23 @@ gameMethodsGroup.MapPost("/placeBoats", [Authorize] async ([FromBody] List<Boat>
     }
 });
 
-gameMethodsGroup.MapGet("/leaderboard", [Authorize]([FromServices] IGameService gameService) => gameService.GetLeaderboard());
-
-gameMethodsGroup.MapPost("/rollback", [Authorize] ([FromQuery] Guid gameId,[FromServices] IGameService gameService) =>
+gameMethodsGroup.MapGet("/leaderboard", [Authorize] async ([FromServices] IGameService gameService) =>
 {
     try
     {
-        return gameService.RollbackTurn(gameId);
+        return await gameService.GetLeaderboard();
+    }
+    catch (Exception e)
+    {
+        return Results.Problem(e.Message);
+    }
+});
+
+gameMethodsGroup.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId,[FromServices] IGameService gameService) =>
+{
+    try
+    {
+        return await gameService.RollbackTurn(gameId);
     }
     catch (Exception ex)
     {

@@ -2,10 +2,10 @@
 
 namespace BattleShip.Models;
 
-public class Boat(string name)
+public class Boat(string name, List<Position> positions)
 {
     public string Name { get; set; } = name;
-    public List<Position> Positions { get; set; } = [];
+    public List<Position> Positions { get; set; } = positions;
 }
 
 public class BoatValidator : AbstractValidator<Boat>

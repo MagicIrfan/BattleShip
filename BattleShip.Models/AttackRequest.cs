@@ -1,9 +1,9 @@
 ﻿namespace BattleShip.Models;
 using FluentValidation;
 
-public class AttackRequest(Position? attackPosition)
+public class AttackRequest(Guid gameId, Position? attackPosition)
 {
-    public Guid GameId { get; set; }
+    public Guid GameId { get; set; } = gameId;
     public Position? AttackPosition { get; set; } = attackPosition;
 }
 

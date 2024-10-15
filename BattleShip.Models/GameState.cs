@@ -19,6 +19,7 @@ namespace BattleShip.Models
         public List<Boat> PlayerTwoBoats { get; set; } = playerTwoBoats; 
         public bool IsPlayerOneWinner { get; set; } = isPlayerOneWinner;
         public bool IsPlayerTwoWinner { get; set; } = isPlayerTwoWinner;
+        public bool IsMultiplayer { get; set; } = false;
         public List<AttackRecord> AttackHistory { get; set; } = [];
 
         public class AttackRecord(Position attackPosition, string playerId, bool isHit, bool isSunk)

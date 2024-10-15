@@ -43,12 +43,15 @@ public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : I
         {
             Console.WriteLine("Claims: " + claim);
         }
-        
+    
         var user = Context.User;
+    
+        var pictureClaim = user.Claims.FirstOrDefault(c => c.Type == "picture");
+
         return Results.Ok(new
         {
             user.Identity?.Name,
-            EmailAddress = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value,
+            picture = pictureClaim?.Value
         });
     }
 }

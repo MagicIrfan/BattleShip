@@ -10,52 +10,15 @@ public interface IGameService
     Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest,
         IValidator<AttackRequest> validator);
 
-    IResult RollbackTurn(Guid gameId);
-    Guid StartGame();
-    IResult GetLeaderboard();
+    Task<IResult> RollbackTurn(Guid gameId);
+    Task<Guid> StartGame();
+    Task<IResult> GetLeaderboard();
     Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId);
 }
 
 public class GameService(IGameRepository gameRepository, IHttpContextAccessor httpContextAccessor) : IGameService
 {
-    private const int GridSize = 10;
     private HttpContext Context => httpContextAccessor.HttpContext!;
-
-    private Position GenerateIaAttackRequest(GameState gameState)
-    {
-        var random = new Random();
-        var history = gameState.AttackHistory.Where(x => x.PlayerId == "IA").ToList();
-
-        var targetPositions = new HashSet<Position>();
-
-        if (history.Any(h => h.IsHit))
-        {
-            var lastHit = history.Last(h => h.IsHit);
-            var hitPosition = lastHit.AttackPosition;
-
-            targetPositions.Add(new Position(hitPosition.X - 1, hitPosition.Y));
-            targetPositions.Add(new Position(hitPosition.X + 1, hitPosition.Y));
-            targetPositions.Add(new Position(hitPosition.X, hitPosition.Y - 1));
-            targetPositions.Add(new Position(hitPosition.X, hitPosition.Y + 1));
-        }
-
-        if (targetPositions.Count == 0)
-        {
-            while (targetPositions.Count < 5)
-            {
-                var attackPosition = new Position(random.Next(0, 10), random.Next(0, 10));
-                targetPositions.Add(attackPosition);
-            }
-        }
-
-        var selectedPosition = targetPositions.FirstOrDefault(pos =>
-                                   pos.X is >= 0 and < 10 && pos.Y is >= 0 and < 10 &&
-                                   !history.Any(h => h.AttackPosition.X == pos.X && h.AttackPosition.Y == pos.Y)) ??
-                               new Position(random.Next(0, 10), random.Next(0, 10));
-
-        return selectedPosition;
-    }
-
 
     public async Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest,
         IValidator<AttackRequest> validator)
@@ -72,7 +35,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
 
         GameHelper.ValidateTurn(gameState, playerId);
 
-        attackRequest.AttackPosition ??= GenerateIaAttackRequest(gameState);
+        attackRequest.AttackPosition ??= await IaHelper.GenerateIaAttackRequest(gameState);
 
         var boats = GameHelper.GetPlayerBoats(gameState, playerId);
         var (isHit, isSunk, updatedBoats) = AttackHelper.ProcessAttack(boats, attackRequest.AttackPosition);
@@ -87,15 +50,18 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
     }
 
 
-    public IResult RollbackTurn(Guid gameId)
+    public Task<IResult> RollbackTurn(Guid gameId)
     {
         var gameState = gameRepository.GetGame(gameId);
 
         if (gameState == null)
-            return Results.NotFound("Game not found");
+            return Task.FromResult(Results.NotFound("Game not found"));
+        
+        if (gameState.IsMultiplayer) 
+            return Task.FromResult(Results.NoContent());
 
         if (gameState.AttackHistory.Count == 0)
-            return Results.BadRequest("No moves to rollback");
+            return Task.FromResult(Results.BadRequest("No moves to rollback"));
 
         var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
 
@@ -112,14 +78,14 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
 
         gameRepository.UpdateGame(gameState);
 
-        return Results.Ok(new
+        return Task.FromResult(Results.Ok(new
         {
             gameState.GameId,
             Message = "Last move rolled back successfully."
-        });
+        }));
     }
 
-    public Guid StartGame()
+    public Task<Guid> StartGame()
     {
         var gameId = Guid.NewGuid();
         var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
@@ -141,14 +107,14 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
 
         gameRepository.AddGame(gameId, gameState);
 
-        return gameState.GameId;
+        return Task.FromResult(gameState.GameId);
     }
 
 
-    public IResult GetLeaderboard()
+    public Task<IResult> GetLeaderboard()
     {
         var leaderboard = gameRepository.GetLeaderboard();
-        return Results.Ok(leaderboard);
+        return Task.FromResult(Results.Ok(leaderboard));
     }
 
 
