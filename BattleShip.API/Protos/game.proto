@@ -1,7 +1,5 @@
 ﻿syntax = "proto3";
 
-import "google/protobuf/wrappers.proto";
-
 option csharp_namespace = "BattleShip.Grpc";
 
 service GameService {
@@ -9,7 +7,7 @@ service GameService {
   rpc Attack (AttackRequest) returns (AttackResponse);
 }
 
-message StartGameRequest {}
+message StartGameRequest { }
 
 message StartGameResponse {
   string gameId = 1;
@@ -22,12 +20,8 @@ message AttackRequest {
 }
 
 message AttackResponse {
-  string gameId = 1;
-  string playerAttackResult = 2;
-  Position computerAttackPosition = 3;
-  string computerAttackResult = 4;
-  bool isPlayerWinner = 5;
-  bool isComputerWinner = 6;
+  string playerAttackResult = 1;
+  bool isPlayerWinner = 2;
 }
 
 message Boat {

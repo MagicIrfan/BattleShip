@@ -1,21 +1,25 @@
 using Auth0.AspNetCore.Authentication;
 using BattleShip.API;
-using BattleShip.API.Methods;
 using BattleShip.API.Services;
 using BattleShip.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ValidationException = FluentValidation.ValidationException;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddGrpc();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
-builder.Services.AddSingleton<IGameService, GameService>();
+
 builder.Services.AddSingleton<IGameRepository, GameRepository>();
+builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
+
 builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
 
 builder.Services.AddAuth0WebAppAuthentication(options =>
@@ -23,23 +27,21 @@ builder.Services.AddAuth0WebAppAuthentication(options =>
     options.Domain = builder.Configuration["Auth0:Domain"] ?? string.Empty;
     options.ClientId = builder.Configuration["Auth0:ClientId"] ?? string.Empty;
 });
-builder.Services.AddControllersWithViews();
 
+builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins",
-        builder =>
+        corsPolicyBuilder =>
         {
-            builder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader()
-                   .WithExposedHeaders("grpc-status", "grpc-message");
+            corsPolicyBuilder.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .WithExposedHeaders("grpc-status", "grpc-message");
         });
 });
-
-builder.Services.AddControllers(); 
 
 var app = builder.Build();
 
@@ -52,43 +54,89 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseGrpcWeb();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapGrpcService<GameGrpcService>().EnableGrpcWeb();
-
 app.UseHttpsRedirection();
 
+app.MapGrpcService<GameGrpcService>().EnableGrpcWeb();
 app.MapHub<GameHub>("/gameHub");
 
-app.MapPost("/startGame", /*[Authorize]*/ async ([FromServices] IGameService gameService) => 
-    await GameMethods.StartGame(gameService));
+var gameMethodsGroup = app.MapGroup("/api/game/");
 
-app.MapPost("/attack", /*[Authorize]*/ async (AttackRequest attackRequest, IValidator<AttackRequest> validator, IGameRepository gameRepository, IGameService gameService) => 
-        await GameMethods.ProcessAttack(attackRequest, validator, gameRepository, gameService))
+gameMethodsGroup.MapPost("/startGame", [Authorize](IGameService gameService) =>
+{
+    try
+    {
+        return Results.Ok(gameService.StartGame());
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+gameMethodsGroup.MapPost("/placeBoats", [Authorize] async ([FromBody] List<Boat> playerBoats, [FromQuery] Guid gameId, [FromServices] IGameService gameService) =>
+{
+    try
+    {
+        return await gameService.PlaceBoats(playerBoats, gameId);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+gameMethodsGroup.MapGet("/leaderboard", [Authorize]([FromServices] IGameService gameService) => gameService.GetLeaderboard());
+
+gameMethodsGroup.MapPost("/rollback", [Authorize] ([FromQuery] Guid gameId,[FromServices] IGameService gameService) =>
+{
+    try
+    {
+        return gameService.RollbackTurn(gameId);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
+gameMethodsGroup.MapPost("/attack", [Authorize] async (AttackRequest attackRequest, IValidator<AttackRequest> validator,[FromServices] IGameService gameService) =>
+{
+    try
+    {
+        var (isHit, isSunk, isWinner) = await gameService.ProcessAttack(attackRequest, validator);
+        return Results.Ok(new
+        {
+            PlayerAttackResult = isHit ? (isSunk ? "Sunk" : "Hit") : "Miss",
+            IsPlayerWinner = isWinner
+        });
+    }
+    catch (ValidationException ex)
+    {
+        return Results.ValidationProblem(ex.Errors.ToDictionary(err => err.PropertyName, err => new[] { err.ErrorMessage }));
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+})
 .Produces(200)
 .Produces(404)
 .ProducesValidationProblem();
 
-app.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId, [FromServices] IGameRepository gameRepository, [FromServices] IGameService gameService) =>
-{
-    await GameMethods.Rollback(gameRepository, gameService, gameId);
-});
+var authenticationMethodsGroup = app.MapGroup("/api/auth/");
 
-app.MapGet("/login", [Authorize] async (context) =>
-{
-    await AuthenticationMethods.Login(context, "/");
-});
-
-app.MapPost("/logout", [Authorize] async (context) =>
-{
-    await AuthenticationMethods.Logout(context);
-});
-
-app.MapGet("/profile", async (HttpContext context) =>
-{
-    return await AuthenticationMethods.Profile(context);
-});
+authenticationMethodsGroup.MapGet("/login", async ([FromServices] IAuthenticationService authService) => await authService.Login());
+authenticationMethodsGroup.MapPost("/logout", [Authorize] async ([FromServices] IAuthenticationService authService) => await authService.Logout());
+authenticationMethodsGroup.MapGet("/profile", [Authorize] ([FromServices] IAuthenticationService authService) => authService.Profile());
 
 app.Run();

@@ -5,23 +5,35 @@ namespace BattleShip.Models
 {
     public class GameState(
         Guid gameId,
-        List<Boat> playerBoats,
-        List<Boat> computerBoats,
-        bool isPlayerWinner,
-        bool isComputerWinner)
+        string playerOneId,
+        string playerTwoId,
+        List<Boat> playerOneBoats,
+        List<Boat> playerTwoBoats,
+        bool isPlayerOneWinner,
+        bool isPlayerTwoWinner)
     {
         public Guid GameId { get; set; } = gameId;
-        public List<Boat> PlayerBoats { get; set; } = playerBoats;
-        public List<Boat> ComputerBoats { get; set; } = computerBoats;
-        public bool IsPlayerWinner { get; set; } = isPlayerWinner;
-        public bool IsComputerWinner { get; set; } = isComputerWinner;
+        public string PlayerOneId { get; set; } = playerOneId;
+        public string PlayerTwoId { get; set; } = playerTwoId;
+        public List<Boat> PlayerOneBoats { get; set; } = playerOneBoats;
+        public List<Boat> PlayerTwoBoats { get; set; } = playerTwoBoats; 
+        public bool IsPlayerOneWinner { get; set; } = isPlayerOneWinner;
+        public bool IsPlayerTwoWinner { get; set; } = isPlayerTwoWinner;
         public List<AttackRecord> AttackHistory { get; set; } = [];
-    
-        public class AttackRecord
+
+        public class AttackRecord(Position attackPosition, string playerId, bool isHit, bool isSunk)
         {
-            public Position AttackPosition { get; set; }
-            public bool IsPlayerAttack { get; set; }
-            public bool IsHit { get; set; }
+            public Position AttackPosition { get; set; } = attackPosition;
+            public string PlayerId { get; set; } = playerId;
+            public bool IsHit { get; set; } = isHit;
+            public bool isSunk { get; set; } = isSunk;
         }
+        
+        public void AssignPlayer2(string player2Id)
+        {
+            PlayerTwoId = player2Id;
+        }
+
+        public bool IsFull() => PlayerTwoId != null;
     }
 }

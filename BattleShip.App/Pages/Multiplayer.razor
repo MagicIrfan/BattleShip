@@ -1,0 +1,84 @@
+﻿@page "/multiplayer"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject HubConnection HubConnection
+
+<h3>Multiplayer BattleShip</h3>
+
+<div>
+    <label>Enter Game ID (or create new one):</label>
+    <input @bind="gameIdInput" placeholder="Enter or generate a Game ID" />
+    <button @onclick="JoinGame">Join Game</button>
+</div>
+
+@if (gameId != Guid.Empty)
+{
+    <p>Connected to Game ID: @gameId</p>
+
+    <div>
+        <h4>Attack Coordinates</h4>
+        <input type="number" @bind="attackX" min="0" max="9" placeholder="X" />
+        <input type="number" @bind="attackY" min="0" max="9" placeholder="Y" />
+        <button @onclick="SendAttack">Send Attack</button>
+    </div>
+
+    <div>
+        <h4>Game Events</h4>
+        <ul>
+            @foreach (var eventMessage in eventMessages)
+            {
+                <li>@eventMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    private string gameIdInput = string.Empty;
+    private Guid gameId;
+    private string playerId = Guid.NewGuid().ToString();
+    private int attackX;
+    private int attackY;
+    private List<string> eventMessages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        HubConnection.On<Guid, string, int, int>("ReceiveAttack", (gameId, attackerId, x, y) =>
+        {
+            eventMessages.Add($"Player {attackerId} attacked at ({x}, {y}) in game {gameId}");
+            StateHasChanged();
+        });
+
+
+        HubConnection.On<Guid, object>("GameStateUpdated", (gameId, gameState) =>
+        {
+            eventMessages.Add("Game state updated.");
+            StateHasChanged();
+        });
+
+        await HubConnection.StartAsync();
+    }
+
+    private async Task JoinGame()
+    {
+        if (Guid.TryParse(gameIdInput, out var parsedGameId))
+        {
+            gameId = parsedGameId;
+        }
+        else
+        {
+            gameId = Guid.NewGuid();  // Créer une nouvelle partie si aucun GameId n'est fourni
+            gameIdInput = gameId.ToString();
+        }
+
+        await HubConnection.SendAsync("JoinGame", gameId, playerId); // Envoi du playerId
+        eventMessages.Add($"Joined game with ID: {gameId}");
+    }
+
+
+    private async Task SendAttack()
+    {
+        await HubConnection.SendAsync("SendAttack", gameId, playerId, attackX, attackY);
+        eventMessages.Add($"You attacked at ({attackX}, {attackY})");
+    }
+}
