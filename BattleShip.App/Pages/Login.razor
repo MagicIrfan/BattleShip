@@ -1,0 +1,14 @@
+﻿@page "/login"
+@inject NavigationManager Navigation
+
+<h3>Login</h3>
+
+<button @onclick="Logins">Login with Auth0</button>
+
+@code {
+    private void Logins()
+    {
+        // Redirige vers l'URL de connexion d'Auth0
+        Navigation.NavigateTo("authentication/login");
+    }
+}
