@@ -1,0 +1,23 @@
+﻿@code {
+    [Parameter] public Position[][] Positions { get; set; }
+    [Parameter] public bool IsOpponent { get; set; }
+    [Parameter] public EventCallback<Position> OnCellClick { get; set; }
+
+    private bool IsBoatAtPosition(Position position)
+    {
+        return GameService.boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
+    }
+}
+
+<div class="grid">
+    @for (int row = 0; row < Positions.Length; row++)
+    {
+        @for (int col = 0; col < Positions[0].Length; col++)
+        {
+            Position position = Positions[row][col];
+            string cellBackGroundColor = IsOpponent && position.IsHit ? "red" : (IsBoatAtPosition(position) ? "lightgray" : "");
+
+            <button class="cell" @onclick="() => OnCellClick.InvokeAsync(position)" style="background-color: @(cellBackGroundColor)"></button>
+        }
+    }
+</div>

@@ -19,12 +19,10 @@
 
                         Position playerPosition = GameService.playerGrid.Positions[col][row];
 
-                        // Vérification pour voir si la cellule contient un bateau
                         bool boatPresent = IsBoatAtPosition(playerPosition);
-                        // Déterminer la couleur de fond en fonction de la présence d'un bateau
                         string cellBackgroundColor = boatPresent ? "lightgray" : "";
 
-                        bool isHighlighted = IsHighlighted(row, col); // Utilisez IsHighlighted avec row, col
+                        bool isHighlighted = IsHighlighted(row, col);
 
                         <button @onclick="OnMouseClickHandler" @ref="cellRef" class="cell"
                                 style="background-color: @(cellBackgroundColor);
@@ -44,9 +42,11 @@
 
                         Position opponentPosition = GameService.opponentGrid.Positions[col][row];
 
-                        <!--<button class="cell" @onclick="() => GameService.Attack(opponentPosition)"
-                                style="background-color: @(GameService.GetCellColor(opponentPosition))">
-                        </button>-->
+                        string cellBackGroundColor = opponentPosition.IsHit ? "red" : "";
+
+                       <button class="cell" @onclick="() => GameService.Attack(opponentPosition)"
+                                style="background-color: @(cellBackGroundColor)">
+                        </button>
                     }
                 }
             </div>
@@ -117,15 +117,13 @@
     ElementReference playerGridRef;
     ElementReference cellRef;
     double gridX = 0, gridY = 0;
-    IList<Boat> boatsToPlace = new List<Boat>();
 
-    public async Task OnMouseMoveHandler(MouseEventArgs e)
+    public async Task PlaceBoat(MouseEventArgs e)
     {
         if (isPlacingBoats)
         {
             if (gridX == 0 && gridY == 0)
             {
-                // Appel JavaScript pour obtenir les coordonnées de la grille
                 var rect = await JsRuntime.InvokeAsync<BoundingClientRect>("getGridBoundingRect", playerGridRef);
                 gridX = rect.Left;
                 gridY = rect.Top;
@@ -147,9 +145,14 @@
         }
     }
 
+    public async Task OnMouseMoveHandler(MouseEventArgs e)
+    {
+        await PlaceBoat(e);
+    }
+
     public bool IsBoatAtPosition(Position position)
     {
-        foreach (var boat in boatsToPlace)
+        foreach (var boat in GameService.boats)
         {
             foreach (var boatPosition in boat.Positions)
             {
@@ -179,7 +182,7 @@
             newPositions.Add(position);
         }
 
-        foreach (var boat in boatsToPlace)
+        foreach (var boat in GameService.boats)
         {
             foreach (var existingPosition in boat.Positions)
             {
@@ -195,7 +198,7 @@
         return false;
     }
 
-    public void OnMouseClickHandler(MouseEventArgs e)
+    public async void OnMouseClickHandler(MouseEventArgs e)
     {
         if (isPlacingBoats)
         {
@@ -223,12 +226,13 @@
                     return;
                 }
 
-                boatsToPlace.Add(new Boat(boatPositions));
-                string json = JsonSerializer.Serialize(boatsToPlace, new JsonSerializerOptions { WriteIndented = true });
+                GameService.boats.Add(new Boat(boatPositions));
+                string json = JsonSerializer.Serialize(GameService.boats, new JsonSerializerOptions { WriteIndented = true });
                 Console.WriteLine(json);
                 if (indexBoat == 4)
                 {
                     isPlacingBoats = false;
+                    await GameService.PlaceBoats();
                 }
                 else
                 {
