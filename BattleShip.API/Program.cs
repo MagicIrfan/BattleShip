@@ -16,11 +16,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
-
 builder.Services.AddSingleton<IGameRepository, GameRepository>();
 builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
-
-builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<StartGameRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<BoatValidator>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -83,11 +82,11 @@ gameMethodsGroup.MapPost("/startGame", [Authorize]([FromBody] StartGameRequest r
     }
 });
 
-gameMethodsGroup.MapPost("/placeBoats", [Authorize] async ([FromBody] List<Boat> playerBoats, [FromQuery] Guid gameId, [FromServices] IGameService gameService) =>
+gameMethodsGroup.MapPost("/placeBoats", [Authorize] async ([FromBody] List<Boat> playerBoats, [FromQuery] Guid gameId, [FromServices] IGameService gameService, [FromServices] BoatValidator boatValidator) =>
 {
     try
     {
-        return await gameService.PlaceBoats(playerBoats, gameId);
+        return await gameService.PlaceBoats(playerBoats, gameId, boatValidator);
     }
     catch (Exception ex)
     {

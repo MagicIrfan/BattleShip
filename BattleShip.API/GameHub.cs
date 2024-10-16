@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace BattleShip.API;
 
-public class GameHub(IGameService gameService, IValidator<AttackRequest> validator) : Hub
+public class GameHub(IGameService gameService, IValidator<AttackRequest> validator, IValidator<Boat> boatValidator) : Hub
 {
     private static readonly Dictionary<Guid, GameState> Games = new();
     
@@ -61,7 +61,7 @@ public class GameHub(IGameService gameService, IValidator<AttackRequest> validat
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
         
-        await gameService.PlaceBoats(playerBoats, gameId);
+        await gameService.PlaceBoats(playerBoats, gameId, boatValidator);
         await Clients.Group(gameId.ToString()).SendAsync("Boat placed", playerId);
     }
 

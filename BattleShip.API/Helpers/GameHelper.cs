@@ -95,7 +95,7 @@ public static class GameHelper
 
         var boats = new List<Boat>();
 
-        foreach (var (name, size) in boatDefinitions)
+        foreach (var (_, size) in boatDefinitions)
         {
             bool isValid;
 
@@ -114,7 +114,7 @@ public static class GameHelper
                     ));
                 }
 
-                var boat = new Boat(name, positions);
+                var boat = new Boat(positions);
                 boats.Add(boat);
                 isValid = ValidateBoatPositions(boats, effectiveGridSize);
 

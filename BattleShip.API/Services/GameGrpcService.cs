@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BattleShip.API.Services;
 
-public class GameGrpcService(IGameService gameService, IValidator<Models.AttackRequest> attackRequestValidator, IValidator<Models.StartGameRequest> startGameRequestValidator) : Grpc.GameService.GameServiceBase
+public class GameGrpcService(IGameService gameService, IValidator<Models.AttackRequest> attackRequestValidator, IValidator<Models.StartGameRequest> startGameRequestValidator, IValidator<Models.Boat> boatValidator) : Grpc.GameService.GameServiceBase
 {
     [Authorize]
     public override async Task<StartGameResponse> StartGame(StartGameRequest request, ServerCallContext context)
@@ -65,10 +65,10 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.AttackR
     [Authorize]
     public override async Task<PlaceBoatsResponse> PlaceBoats(PlaceBoatsRequest request, ServerCallContext context)
     {
-        var playerBoats = (from boat in request.PlayerBoats let positions = boat.Positions.Select(pos => new Models.Position(pos.X, pos.Y)).ToList() select new Models.Boat(boat.Name, positions)).ToList();
+        var playerBoats = (from boat in request.PlayerBoats let positions = boat.Positions.Select(pos => new Models.Position(pos.X, pos.Y)).ToList() select new Models.Boat(positions)).ToList();
 
         var gameId = Guid.Parse(request.GameId);
-        var result = await gameService.PlaceBoats(playerBoats, gameId);
+        var result = await gameService.PlaceBoats(playerBoats, gameId, boatValidator);
 
         return new PlaceBoatsResponse
         {

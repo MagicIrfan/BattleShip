@@ -2,9 +2,17 @@
 
 namespace BattleShip.Models;
 
-public class Boat(string name, List<Position> positions)
+public class Boat(List<Position> positions)
 {
-    public string Name { get; set; } = name;
+    private static readonly Dictionary<int, string> BoatNamesBySize = new()
+    {
+        { 5, "Porte-avions" },
+        { 4, "Croiseur" },
+        { 3, "Contre-torpilleur" },
+        { 2, "Torpilleur" }
+    };
+
+    public string Name { get; set; } = BoatNamesBySize.GetValueOrDefault(positions.Count, "Unknown");
     public List<Position> Positions { get; set; } = positions;
 }
 
@@ -15,7 +23,6 @@ public class BoatValidator : AbstractValidator<Boat>
         { "Porte-avions", 5 },
         { "Croiseur", 4 },
         { "Contre-torpilleur", 3 },
-        { "Contre-torpilleur2", 3 },
         { "Torpilleur", 2 }
     };
 
@@ -28,10 +35,6 @@ public class BoatValidator : AbstractValidator<Boat>
         RuleFor(boat => boat.Positions.Count)
             .Equal(boat => ExpectedBoatSizes[boat.Name])
             .WithMessage(boat => $"Boat {boat.Name} must have a size of {ExpectedBoatSizes[boat.Name]}.");
-
-        RuleFor(boat => boat.Positions.Count)
-            .Equal(boat => boat.Positions.Count)
-            .WithMessage(boat => $"Boat {boat.Name} must have {boat.Positions.Count} positions.");
 
         RuleFor(boat => boat.Positions)
             .Must(BeAlignedStraight)

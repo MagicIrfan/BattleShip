@@ -2,6 +2,7 @@
 using BattleShip.API.Helpers;
 using BattleShip.Models;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.IdentityModel.Tokens;
 
 namespace BattleShip.API.Services;
@@ -14,7 +15,7 @@ public interface IGameService
     Task<IResult> RollbackTurn(Guid gameId);
     Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
     Task<IResult> GetLeaderboard();
-    Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId);
+    Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator);
 }
 
 public class GameService(IGameRepository gameRepository, IHttpContextAccessor httpContextAccessor) : IGameService
@@ -131,8 +132,16 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         return Task.FromResult(Results.Ok(leaderboard));
     }
     
-    public Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId)
+    public Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator)
     {
+        foreach (var errorMessages in from boat in playerBoats select validator.Validate(boat) into validationResult where !validationResult.IsValid select validationResult.Errors
+                     .Select(e => e.ErrorMessage)
+                     .ToArray())
+        {
+            return Task.FromResult(Results.BadRequest(new { Errors = errorMessages }));
+        }
+
+        
         var playerId = Context.User.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         
