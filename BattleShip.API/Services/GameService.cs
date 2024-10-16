@@ -12,7 +12,7 @@ public interface IGameService
         IValidator<AttackRequest> validator);
 
     Task<IResult> RollbackTurn(Guid gameId);
-    Task<Guid> StartGame(/*StartGameRequest request, IValidator<StartGameRequest> validator*/);
+    Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
     Task<IResult> GetLeaderboard();
     Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId);
 }
@@ -24,7 +24,8 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
     public async Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest,
         IValidator<AttackRequest> validator)
     {
-        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
+        var playerId = Context.User.Claims
+                .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
                        ?? throw new UnauthorizedAccessException("User not recognized");
 
         var validationResult = await validator.ValidateAsync(attackRequest);
@@ -63,8 +64,9 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         if (gameState.AttackHistory.Count == 0)
             return Task.FromResult(Results.BadRequest("No moves to rollback"));
 
-        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-
+        var playerId = Context.User.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
 
@@ -85,29 +87,24 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         }));
     }
 
-    public async Task<Guid> StartGame(/*StartGameRequest request, IValidator<StartGameRequest> validator*/)
+    public async Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator)
     {
-        /*var validationResult = await validator.ValidateAsync(request);
+        var validationResult = await validator.ValidateAsync(request);
         if (!validationResult.IsValid)
-            throw new ValidationException("Invalid request", validationResult.Errors);*/
+            throw new ValidationException("Invalid request", validationResult.Errors);
         
         var gameId = Guid.NewGuid();
         
-        foreach (var claim in Context.User.Claims)
-        {
-            Console.WriteLine("Claims: " + claim);
-        }
-        
-        //var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-        
         var playerId = Context.User.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        
+        Console.WriteLine("playerId: " + playerId);
 
 
         if (string.IsNullOrEmpty(playerId))
             throw new Exception("User not recognized");
 
-        var computerBoats = GameHelper.GenerateRandomBoats();
+        var computerBoats = GameHelper.GenerateRandomBoats(request.SizeGrid.Value);
 
         var gameState = new GameState(
             gameId: gameId,
@@ -120,8 +117,8 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             difficulty: 1//request.Difficulty
         );
         
-        /*if (request.SizeGrid.HasValue)
-            gameState.GridSize = request.SizeGrid.Value;*/
+        if (request.SizeGrid.HasValue)
+            gameState.GridSize = request.SizeGrid.Value;
 
         gameRepository.AddGame(gameId, gameState);
 
@@ -136,8 +133,9 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
     
     public Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId)
     {
-        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-
+        var playerId = Context.User.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
 
@@ -152,7 +150,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         if (playerBoats.Count != 5)
             return Task.FromResult(Results.BadRequest("Number of boats should be equal to five."));
 
-        if (!GameHelper.ValidateBoatPositions(playerBoats))
+        if (!GameHelper.ValidateBoatPositions(playerBoats, gameState.GridSize))
             return Task.FromResult(Results.BadRequest("Boat placements are impossible."));
 
         if (gameState.PlayerOneId.Equals(playerId))

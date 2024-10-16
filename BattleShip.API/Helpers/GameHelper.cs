@@ -5,15 +5,13 @@ namespace BattleShip.API.Helpers;
 
 public static class GameHelper
 {
-    private const int GridSize = 10;
-
-    public static bool ValidateBoatPositions(List<Boat> boats)
+    public static bool ValidateBoatPositions(List<Boat> boats, int gridSize)
     {
         var allPositions = new HashSet<(int X, int Y)>();
 
         foreach (var position in boats.SelectMany(boat => boat.Positions))
         {
-            if (position.X >= GridSize || position.Y >= GridSize || position.X < 0 || position.Y < 0)
+            if (position.X >= gridSize || position.Y >= gridSize || position.X < 0 || position.Y < 0)
                 return false;
 
             if (!allPositions.Add((position.X, position.Y)))
@@ -81,21 +79,49 @@ public static class GameHelper
         return boats.All(b => b.Positions.All(p => p.IsHit));
     }
     
-    public static List<Boat> GenerateRandomBoats()
+    public static List<Boat> GenerateRandomBoats(int? gridSize)
     {
+        var effectiveGridSize = gridSize ?? 10;
+        
         var random = new Random();
+        var boatDefinitions = new Dictionary<string, int>
+        {
+            { "Porte-avions", 5 },
+            { "Croiseur", 4 },
+            { "Contre-torpilleur", 3 },
+            { "Contre-torpilleur2", 3 },
+            { "Torpilleur", 2 }
+        };
+
         var boats = new List<Boat>();
 
-        while (boats.Count < 2)
+        foreach (var (name, size) in boatDefinitions)
         {
-            var startPosition = new Position(random.Next(0, GridSize), random.Next(0, GridSize));
-            var isVertical = random.Next(0, 2) == 0;
-            var size = boats.Count == 0 ? 3 : 4;
+            bool isValid;
 
-            /*var boat = new Boat(boats.Count == 0 ? "Destroyer" : "Cruiser", startPosition, isVertical, size);
+            do
+            {
+                var positions = new List<Position>();
+                var startX = random.Next(0, effectiveGridSize);
+                var startY = random.Next(0, effectiveGridSize);
+                var isVertical = random.Next(0, 2) == 0;
 
-            if (BoatPlacementHelper.PlaceBoat(boat, boats))
-                boats.Add(boat);*/
+                for (var i = 0; i < size; i++)
+                {
+                    positions.Add(new Position(
+                        isVertical ? startX : startX + i,
+                        isVertical ? startY + i : startY
+                    ));
+                }
+
+                var boat = new Boat(name, positions);
+                boats.Add(boat);
+                isValid = ValidateBoatPositions(boats, effectiveGridSize);
+
+                if (!isValid)
+                    boats.Remove(boat);
+
+            } while (!isValid);
         }
 
         return boats;

@@ -12,7 +12,7 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.AttackR
     {
         var modelRequest = new Models.StartGameRequest(request.SizeGrid, request.Difficulty);
         
-        var gameId = await gameService.StartGame(/*modelRequest, startGameRequestValidator*/);
+        var gameId = await gameService.StartGame(modelRequest, startGameRequestValidator);
 
         var response = new StartGameResponse
         {

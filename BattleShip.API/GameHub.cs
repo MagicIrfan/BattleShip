@@ -1,4 +1,5 @@
-﻿using BattleShip.API.Services;
+﻿using System.Security.Claims;
+using BattleShip.API.Services;
 using BattleShip.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.SignalR;
@@ -11,8 +12,9 @@ public class GameHub(IGameService gameService, IValidator<AttackRequest> validat
     
     public async Task JoinGame(Guid gameId)
     {
-        var playerId = Context.User?.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-
+        var playerId = Context.User?.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
         
@@ -52,8 +54,10 @@ public class GameHub(IGameService gameService, IValidator<AttackRequest> validat
 
     public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId)
     {
-        var playerId = Context.User?.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        var playerId = Context.User?.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
+        
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
         
@@ -63,8 +67,9 @@ public class GameHub(IGameService gameService, IValidator<AttackRequest> validat
 
     public async Task SendAttack(Guid gameId, int x, int y)
     {
-        var attackerId = Context.User?.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-
+        var attackerId = Context.User?.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        
         if (string.IsNullOrEmpty(attackerId))
             throw new UnauthorizedAccessException("User not recognized");
 
