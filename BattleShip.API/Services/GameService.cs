@@ -114,7 +114,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             isPlayerTwoWinner: false,
             playerOneId: playerId,
             playerTwoId: "IA",
-            difficulty: 1//request.Difficulty
+            difficulty: request.Difficulty
         );
         
         if (request.SizeGrid.HasValue)
