@@ -29,6 +29,7 @@ builder.Services.AddOidcAuthentication(options =>
 builder.Services.AddScoped<IGameModalService, GameModalService>();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IHttpService, HttpService>();
 
 builder.Services.AddBlazoredSessionStorage();
 
