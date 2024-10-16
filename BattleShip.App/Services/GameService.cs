@@ -1,8 +1,9 @@
-﻿using BattleShip.Grpc;
-using BattleShip.Models;
+﻿using BattleShip.Models;
 using Grpc.Core;
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 
 namespace BattleShip.Services;
@@ -16,13 +17,13 @@ public interface IGameService
     Grid oponnentGrid { get; set; }
     Task StartGame();
     Task Attack(Position position);
-    Task HandleGameResult(AttackResponse responseData);
+    //Task HandleGameResult(AttackResponse responseData);
     void InitializeBoatPositions();
     bool IsBoatAtPosition(Position position);
     Boat? GetBoatAtPosition(Position position);
     string GetBoatSymbol(Position position);
     string GetCellColor(Position position);
-    bool IsFinished(AttackResponse responseData);
+    //bool IsFinished(AttackResponse responseData);
 }
 
 public class GameService(IGameModalService modalService, NavigationManager navManager, ITokenService tokenService, HttpClient httpClient) : IGameService
@@ -40,11 +41,11 @@ public class GameService(IGameModalService modalService, NavigationManager navMa
 
     public async Task Attack(Position position)
     {
-        var attackRequest = new AttackRequest
+        /*var attackRequest = new AttackRequest
         {
             GameId = gameId?.ToString(),
             AttackPosition = position
-        };
+        };*/
 
         /*var attackResponse = await _gameClient.AttackAsync(attackRequest);
 
@@ -82,7 +83,7 @@ public class GameService(IGameModalService modalService, NavigationManager navMa
         return position != null && position.IsHit ? "red" : "white";
     }
 
-    public async Task HandleGameResult(AttackResponse responseData)
+    /*public async Task HandleGameResult(AttackResponse responseData)
     {
         if (IsFinished(responseData))
         {
@@ -110,7 +111,7 @@ public class GameService(IGameModalService modalService, NavigationManager navMa
                 _navManager.NavigateTo("/");
             }
         }
-    }
+    }*/
 
     public void InitializeBoatPositions()
     {
@@ -129,10 +130,10 @@ public class GameService(IGameModalService modalService, NavigationManager navMa
         return boatPositions.ContainsKey(position);
     }
 
-    public bool IsFinished(AttackResponse responseData)
+    /*public bool IsFinished(AttackResponse responseData)
     {
         return responseData.IsPlayerWinner || responseData.IsComputerWinner;
-    }
+    }*/
 
     /*public async Task StartGame()
     {
@@ -154,35 +155,36 @@ public class GameService(IGameModalService modalService, NavigationManager navMa
     }*/
     public async Task StartGame()
     {
+        // Obtenir le jeton d'accès
         var token = await _tokenService.GetAccessTokenAsync();
-        Console.WriteLine(token);
+        //Console.WriteLine(token);
 
+        // Créer une instance de la requête à envoyer
+        var startGameRequest = new StartGameRequest(10, 2); // Exemple : 10x10 grille, 2 joueurs
+
+        // Créer la requête HTTP POST
         var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:5134/api/game/startGame");
 
+        // Ajouter le jeton d'authentification dans les en-têtes
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        var response = await _httpClient.SendAsync(request);
+        // Sérialiser la requête en JSON et l'ajouter au corps de la requête
+        var jsonContent = JsonSerializer.Serialize(startGameRequest);
+        request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
+        // Envoyer la requête et attendre la réponse
+        Console.WriteLine("A");
+        var response = await _httpClient.SendAsync(request);
+        Console.WriteLine("B");
         if (response.IsSuccessStatusCode)
         {
-            var responseData = await response.Content.ReadAsStringAsync();
-            var startGameResponse = JsonSerializer.Deserialize<StartGameResponse>(responseData);
-
-            // Initialiser les grilles
-            playerGrid = new Grid(10, 10);
-            oponnentGrid = new Grid(10, 10);
-
-            if (startGameResponse != null)
-            {
-                gameId = new Guid(startGameResponse.GameId);
-                boats = startGameResponse.PlayerBoats.ToList();
-            }
-
-            InitializeBoatPositions();
+            var guid = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(guid);
         }
         else
         {
+            // Gérer le cas où la requête échoue
             Console.WriteLine($"Error calling startGame: {response.StatusCode}");
         }
     }

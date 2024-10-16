@@ -17,7 +17,7 @@
                         var currentRow = row;
                         var currentCol = col;
 
-                        Position playerPosition = GameService.playerGrid.Positions[col][row].Position;
+                        Position playerPosition = GameService.playerGrid.Positions[col][row];
                         
                         <button disabled="disabled" class="cell"
                                 style="background-color: @(GameService.GetCellColor(playerPosition))">
@@ -37,7 +37,7 @@
                         var currentRow = row;
                         var currentCol = col;
 
-                        Position oponnentPosition = GameService.oponnentGrid.Positions[col][row].Position;
+                        Position oponnentPosition = GameService.oponnentGrid.Positions[col][row];
 
                         <button class="cell" @onclick="() => GameService.Attack(oponnentPosition)"
                                 style="background-color: @(GameService.GetCellColor(oponnentPosition))">

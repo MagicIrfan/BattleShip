@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>BattleShip</PageTitle>
 
@@ -11,38 +12,49 @@
         <h1 id="title">Bataille Navale</h1>
     </header>
     <div class="buttons">
-        <button role="button" @onclick="HandleGameClick">Jouer contre l'IA'</button>
+        @if (isUserAuthenticated)
+        {
+            <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
+            <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
+        }
+        else
+        {
+            <button role="button" @onclick="NavigateToLogin">Se connecter</button>
+        }
         <button role="button" @onclick="CloseGame">Quitter</button>
     </div>
 </main>
 
 @code {
-    // Cette méthode est déclenchée lorsque l'utilisateur clique sur "Jouer contre l'IA"
-    private async Task HandleGameClick()
-    {
-        // Récupérer l'état de l'utilisateur
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+    private bool isUserAuthenticated;
 
-        // Vérifier si l'utilisateur est authentifié
-        if (user.Identity?.IsAuthenticated ?? false)
-        {
-            // Si l'utilisateur est authentifié, le rediriger vers la page de jeu
-            Navigation.NavigateTo("/game");
-        }
-        else
-        {
-            // Si l'utilisateur n'est pas authentifié, le rediriger vers la page de login
-            Navigation.NavigateTo("/authentication/login");
-        }
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isUserAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
     }
 
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/authentication/login");
+    }
 
-    private async void CloseGame()
+    private void PlayGameSingle()
+    {
+        Navigation.NavigateTo("/game");
+    }
+
+    private void PlayGameMultiplayer()
+    {
+        Navigation.NavigateTo("/game");
+    }
+
+    private async Task CloseGame()
     {
         await JS.InvokeVoidAsync("closeTab");
     }
 }
+
 
 <style>
     header{
@@ -74,7 +86,7 @@
         font-size: 20px; 
         font-weight: 600;
         padding: 15px 30px; 
-        width:8em;
+        width:16em;
         transition: transform 0.3s ease, background-color 0.3s ease; 
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); 
     }
