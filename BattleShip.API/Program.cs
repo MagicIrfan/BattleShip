@@ -125,13 +125,8 @@ gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackRequest 
 {
     try
     {
-        var (isHit, isSunk, isWinner, position) = await gameService.ProcessAttack(attackRequest, validator);
-        return Results.Ok(new
-        {
-            PlayerAttackResult = isHit ? (isSunk ? "Sunk" : "Hit") : "Miss",
-            IsPlayerWinner = isWinner,
-            Position = position
-        });
+        var attackResponse = await gameService.ProcessAttack(attackRequest, validator);
+        return Results.Ok(attackResponse);
     }
     catch (ValidationException ex)
     {

@@ -22,7 +22,7 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.AttackR
         return response;
     }
     
-    [Authorize]
+    /*[Authorize]
     public override async Task<AttackResponse> Attack(AttackRequest request, ServerCallContext context)
     {
         var modelRequest = new Models.AttackRequest(Guid.Parse(request.GameId), new Models.Position(request.AttackPosition.X, request.AttackPosition.Y))
@@ -30,14 +30,7 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.AttackR
             GameId = Guid.Parse(request.GameId)
         };
         
-        var (isHit, isSunk, isWinner, position) = await gameService.ProcessAttack(modelRequest, attackRequestValidator);
-
-        var grpcPosition = new Position
-        {
-            X = position.X,
-            Y = position.Y,
-            IsHit = position.IsHit
-        };
+        var attackResponse = await gameService.ProcessAttack(modelRequest, attackRequestValidator);
 
         return new AttackResponse 
         {
@@ -46,7 +39,7 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.AttackR
             IsWinner = isWinner,
             Position = grpcPosition,
         };
-    }
+    }*/
 
     [Authorize]
     public override async Task<LeaderboardResponse> GetLeaderboard(GetLeaderboardRequest request, ServerCallContext context)
