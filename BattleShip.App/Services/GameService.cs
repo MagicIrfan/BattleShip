@@ -25,7 +25,7 @@ public class GameService : IGameService
     public required List<Boat> boats { get; set; } = new List<Boat>();
     public required Grid playerGrid { get; set; }
     public required Grid opponentGrid { get; set; }
-    public required List<string> historique { get; set; }
+    public required List<string> historique { get; set; } = new List<string>();
     private Dictionary<Position, Boat> boatPositions = new Dictionary<Position, Boat>();
 
     private readonly IGameModalService _modalService;
