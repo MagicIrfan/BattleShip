@@ -1,0 +1,29 @@
+﻿@inject IGameService GameService
+
+<div class="grid">
+    @for (int row = 0; row < Positions.Length; row++)
+    {
+        @for (int col = 0; col < Positions[0].Length; col++)
+        {
+            var currentRow = row;
+            var currentCol = col;
+
+            Position opponentPosition = Positions[col][row];
+
+            string cellBackGroundColor = opponentPosition.IsHit ? "red" : "";
+
+            <button class="cell" @onclick="() => GameService.Attack(opponentPosition)"
+                    style="background-color: @(cellBackGroundColor)">
+            </button>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Position[][] Positions { get; set; }
+    private async Task Attack(Position position)
+    {
+        await GameService.Attack(position);
+    }
+}
