@@ -146,9 +146,6 @@ gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackModel.At
 .ProducesValidationProblem();
 
 var authenticationMethodsGroup = app.MapGroup("/api/auth/");
-
-authenticationMethodsGroup.MapGet("/login", async ([FromServices] IAuthenticationService authService) => await authService.Login());
-authenticationMethodsGroup.MapPost("/logout", [Authorize] async ([FromServices] IAuthenticationService authService) => await authService.Logout());
 authenticationMethodsGroup.MapGet("/profile", [Authorize] async ([FromServices] IAuthenticationService authService) => await authService.Profile());
 
 app.Run();

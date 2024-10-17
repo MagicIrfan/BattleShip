@@ -38,8 +38,8 @@ public static class GameHelper
     {
         return playerId switch
         {
-            _ when playerId == gameState.PlayerOneId => gameState.PlayerOneBoats,
-            _ when playerId == gameState.PlayerTwoId || gameState.PlayerTwoId == "IA" => gameState.PlayerTwoBoats,
+            _ when playerId == gameState.PlayerOneId => gameState.PlayerTwoBoats,
+            _ when playerId == gameState.PlayerTwoId || gameState.PlayerTwoId == "IA" => gameState.PlayerOneBoats,
             _ => throw new UnauthorizedAccessException("Player not recognized in this game.")
         };
     }

@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using BattleShip.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BattleShip.API.Services;
@@ -12,7 +13,7 @@ public interface IMultiplayerService
     Task OnDisconnectedAsync(Exception? exception, HubCallerContext context);
 }
 
-public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository) : IMultiplayerService
+public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository, IAuthenticationService authenticationService) : IMultiplayerService
 {
     private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
     
@@ -24,13 +25,27 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
 
+        var profileResult = await authenticationService.Profile();
+
+        /*if (profileResult is not OkResult okResult)
+            throw new UnauthorizedAccessException("Unable to get user profile");
+
+        var playerInfo = okResult.Value as Dictionary<string, object>;
+
+        string username = playerInfo?["UserName"]?.ToString();
+        string picture = playerInfo?["Picture"]?.ToString();*/
+
+        
         LobbyModel lobby;
 
         if (Lobbies.TryGetValue(gameId, out var value))
         {
             lobby = value;
-            if(lobby.PlayerOneId == playerId || lobby.PlayerTwoId == playerId)
+            if (lobby.PlayerOneId == playerId || lobby.PlayerTwoId == playerId)
+            {
                 await gameHub.Clients.Client(context.ConnectionId).SendAsync("AlreadyJoin");
+                return;
+            }
             
             if (!lobby.IsFull())
             {
@@ -40,6 +55,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
             else
             {
                 await gameHub.Clients.Client(context.ConnectionId).SendAsync("GameIsFull");
+                return;
             }
         }
         else
@@ -55,11 +71,6 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         await gameHub.Groups.AddToGroupAsync(context.ConnectionId, gameId.ToString());
         var currentPlayers = lobby.GetPlayerList();
         await gameHub.Clients.Group(gameId.ToString()).SendAsync("UpdatePlayerList", currentPlayers);
-        
-        if (lobby.IsFull())
-        {
-            await gameHub.Clients.Group(gameId.ToString()).SendAsync("InitializeGame");
-        }
     }
     
     public async Task SetReady(Guid gameId, HubCallerContext context)

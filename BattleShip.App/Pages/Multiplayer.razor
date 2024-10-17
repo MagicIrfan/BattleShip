@@ -1,4 +1,5 @@
 ﻿@page "/multiplayer"
+@using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
 @inject HttpClient HttpClient
@@ -11,6 +12,11 @@
     <input @bind="gameIdInput" placeholder="Enter or generate a Game ID" />
     <button @onclick="JoinGame">Join Game</button>
 </div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p class="error-message">@message</p>
+}
 
 @if (gameId != Guid.Empty)
 {
@@ -25,33 +31,56 @@
         <div class="player-list">
             @foreach (var player in players)
             {
-                <div class="player-card">
-                    <div class="player-icon">
-                        @if (readyPlayers.Contains(player))
-                        {
-                            <span class="checkmark">✔️</span> <!-- Afficher une coche si le joueur est prêt -->
-                        }
-                        👤
-                    </div>
-                    <div class="player-id">@player</div>
+            <div class="player-card">
+                <div class="player-icon">
+                    @if (readyPlayers.Contains(player))
+                    {
+                    <span class="checkmark">✔️</span>
+                    }
+
+                    @if (playerProfiles.ContainsKey(player))
+                    {
+                        <img src="@playerProfiles[player]" alt="Profile Picture" class="profile-picture" />
+                    }
+                    else
+                    {
+                        <span>👤</span> <!-- Emoji par défaut si l'image n'est pas disponible -->
+                    }
                 </div>
+
+                <div class="player-id">
+                    @if (playerProfiles.ContainsKey(player))
+                    {
+                        @playerProfiles[player]
+                    }
+                    else
+                    {
+                        <span>@player</span> <!-- Afficher l'ID si le nom d'utilisateur n'est pas disponible -->
+                    }
+                </div>
+            </div>
             }
+
         </div>
     </div>
 
     <button @onclick="SetReady" disabled="@(!IsReadyEnabled)" class="ready-button">
         Prêt
     </button>
+
 }
 
 @code {
     private string gameIdInput = string.Empty;
     private Guid gameId;
     private HubConnection HubConnection;
-    private List<string> players = [];
-    private string playerId = string.Empty;
-    private HashSet<string> readyPlayers = [];
+    private List<string> players = new();
+    private HashSet<string> readyPlayers = new();
     private bool IsReadyEnabled => players.Count == 2;
+    private string message = string.Empty;
+    private Dictionary<string, string> playerProfiles = new(); // Nouveau dictionnaire pour stocker les profils
+    private string profilePicture = "👤"; // Par défaut
+    private string playerName = "Player"; // Nom par défaut
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,16 +93,29 @@
             })
             .Build();
 
-        HubConnection.On<List<string>>("UpdatePlayerList", (playerList) =>
+        HubConnection.On<List<string>>("UpdatePlayerList", async (playerList) =>
         {
             players = playerList; 
+            await LoadPlayerProfiles();
             StateHasChanged(); 
         });
-        
+
         HubConnection.On<HashSet<string>>("UpdateReadyStatus", (readyPlayersList) =>
         {
             readyPlayers = new HashSet<string>(readyPlayersList);
-            StateHasChanged(); // Mettre à jour l'interface utilisateur
+            StateHasChanged();
+        });
+
+        HubConnection.On("AlreadyJoin", () =>
+        {
+            message = "You have already joined this game.";
+            StateHasChanged();
+        });
+
+        HubConnection.On("GameIsFull", () =>
+        {
+            message = "The game is full.";
+            StateHasChanged();
         });
 
         await HubConnection.StartAsync();
@@ -81,6 +123,7 @@
     
     private async Task JoinGame()
     {
+        message = string.Empty;
         if (Guid.TryParse(gameIdInput, out var parsedGameId))
         {
             gameId = parsedGameId;
@@ -100,6 +143,7 @@
         await HubConnection.SendAsync("LeaveGame", gameId);
         gameId = Guid.Empty; 
         players.Clear();
+        message = string.Empty;
         StateHasChanged();
     }
 
@@ -107,9 +151,40 @@
     {
         await HubConnection.SendAsync("SetReady", gameId);
     }
+
+    private async Task LoadPlayerProfiles()
+    {
+        try
+        {
+            var token = await TokenService.GetAccessTokenAsync();
+
+            HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var response = await HttpClient.GetAsync("https://localhost:5134/api/auth/profile");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            }
+            else
+            {
+                throw new Exception("Failed to load player profiles");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+        }
+    }
 }
 
+
 <style>
+    .error-message {
+        color: red;
+        font-weight: bold;
+        margin-top: 0.5em;
+    }
+    
     .game-setup {
         margin-bottom: 1em;
     }
@@ -170,12 +245,17 @@
         cursor: not-allowed;
     }
 
+    .profile-picture {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
     .checkmark {
         position: absolute;
         top: -10px;
         right: -10px;
         font-size: 1.5em;
-        color: green; /* Ou une autre couleur que vous préférez */
+        color: green;
     }
-
 </style>

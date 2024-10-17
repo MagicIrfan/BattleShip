@@ -1,14 +1,10 @@
-﻿using System.Security.Claims;
-using Auth0.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using System.Net.Http.Headers;
+using System.Security.Claims;
 
 namespace BattleShip.API.Services;
 
 public interface IAuthenticationService
 {
-    Task Login();
-    Task Logout();
     Task<IResult> Profile();
 }
 
@@ -16,42 +12,47 @@ public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : I
 {
     private HttpContext Context => httpContextAccessor.HttpContext!;
     
-    public async Task Login()
+    public async Task<IResult> Profile()
     {
-        const string returnUrl = "/";
-        
-        var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
-            .WithRedirectUri(returnUrl)
-            .Build();
+        var nameIdentifier = Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
-        await Context.ChallengeAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
-    }
+        if (string.IsNullOrEmpty(nameIdentifier))
+            return Results.Unauthorized();
 
-    public async Task Logout()
-    {
-        var authenticationProperties = new LogoutAuthenticationPropertiesBuilder()
-            .WithRedirectUri("/")
-            .Build();
+        var token = ExtractToken(Context);
 
-        await Context.SignOutAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
-        await Context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    }
+        if (string.IsNullOrEmpty(token))
+            return Results.Unauthorized();
 
-    public Task<IResult> Profile()
-    {
-        foreach (var claim in Context.User.Claims)
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.GetAsync("https://dev-dd243sihmby5ljlg.us.auth0.com/userinfo");
+
+        if (!response.IsSuccessStatusCode)
+            return Results.Problem("Failed to retrieve user info.");
+
+        var content = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+
+        if (content == null)
+            return Results.Problem("Invalid response format.");
+
+        return Results.Ok(new
         {
-            Console.WriteLine("Claims: " + claim);
+            UserName = content["nickname"]?.ToString(),
+            Picture = content["picture"]?.ToString()
+        });
+    }
+    
+    private string? ExtractToken(HttpContext context)
+    {
+        if (!context.Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            return null;
         }
-    
-        var user = Context.User;
-    
-        var pictureClaim = user.Claims.FirstOrDefault(c => c.Type == "picture");
 
-        return Task.FromResult(Results.Ok(new
-        {
-            user.Identity?.Name,
-            picture = pictureClaim?.Value
-        }));
+        var authHeaderValue = authHeader.ToString();
+        return authHeaderValue.StartsWith("Bearer ") ? authHeaderValue["Bearer ".Length..].Trim() : null;
     }
+
 }
