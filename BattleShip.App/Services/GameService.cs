@@ -1,4 +1,4 @@
-﻿using BattleShip.Components;
+﻿using BattleShip.Exceptions;
 using BattleShip.Models;
 using Microsoft.AspNetCore.Components;
 using System.Text.Json;
@@ -88,31 +88,47 @@ public class GameService : IGameService
         if (playerAttackResponse.IsSuccessStatusCode)
         {
             var jsonString = await playerAttackResponse.Content.ReadAsStringAsync();
-            Console.WriteLine(jsonString);
 
             var attackResponse = JsonSerializer.Deserialize<AttackResponse>(jsonString, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
 
-            if (attackResponse != null)
+            if (attackResponse == null)
             {
-                Position oponnentPosition = attackResponse.PlayerAttackPosition;
-                oponnentPosition.IsHit = attackResponse.PlayerIsHit;
-                opponentGrid.PositionsData[attackPosition.X][attackPosition.Y].Position = oponnentPosition;
-                opponentGrid.PositionsData[attackPosition.X][attackPosition.Y].isMiss = !attackResponse.PlayerIsHit;
+                throw new Exception("Invalid response from the server.");
+            }
 
-                Position playerPosition = attackResponse.AiAttackPosition;
-                playerPosition.IsHit = attackResponse.AiIsHit;
-                playerGrid.PositionsData[playerPosition.X][playerPosition.Y].Position = playerPosition;
-                playerGrid.PositionsData[playerPosition.X][playerPosition.Y].isMiss = !attackResponse.AiIsHit;
+            Console.WriteLine(jsonString);
+
+            UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, opponentGrid);
+
+            if (attackResponse.PlayerIsWinner)
+            {
+                Console.WriteLine("Le joueur a gagné !");
+            }
+
+            UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit, playerGrid);
+
+            if (attackResponse.AiIsWinner)
+            {
+                Console.WriteLine("L'ordinateur a gagné !");
             }
         }
         else
         {
-            throw new Exception($"Error calling attack: {playerAttackResponse.StatusCode}");
+            throw new AttackException($"Error calling attack: {playerAttackResponse.StatusCode}", playerAttackResponse.StatusCode);
         }
     }
+
+    private void UpdateGrid(Position position, bool isHit, Grid grid)
+    {
+        position.IsHit = isHit;
+        var state = isHit ? PositionState.HIT : PositionState.MISS;
+        grid.PositionsData[position.X][position.Y].Position = position;
+        grid.PositionsData[position.X][position.Y].State = state;
+    }
+
 
 
     public void PlaceBoat(List<Position> positions)

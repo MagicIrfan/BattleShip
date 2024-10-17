@@ -2,41 +2,21 @@
 @inject IJSRuntime JsRuntime
 
 <div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef">
-    @for (int row = 0; row < PositionsData.Length; row++)
+    @foreach (var row in Enumerable.Range(0, PositionsData.Length))
     {
-        @for (int col = 0; col < PositionsData[0].Length; col++)
+        @foreach (var col in Enumerable.Range(0, PositionsData[0].Length))
         {
-            var currentRow = row;
-            var currentCol = col;
+            var playerPositionData = PositionsData[col][row];
+            var playerPosition = playerPositionData.Position;
+            string cellBackgroundColor = GetCellBackgroundColor(playerPosition, col, row);
+            bool isDisabled = !IsPlacingBoats || PositionState.MISS.Equals(playerPositionData.State) || PositionState.HIT.Equals(playerPositionData.State);
 
-            Position playerPosition = PositionsData[col][row].Position;
-
-            bool boatPresent = GameService.IsBoatAtPosition(playerPosition);
-
-            string cellBackgroundColor = "";
-
-            if (boatPresent)
-            {
-                cellBackgroundColor = "lightgray";
-            }
-
-            if (playerPosition.IsHit)
-            {
-                cellBackgroundColor = "red";
-            }
-
-            if (PositionsData[col][row].isMiss)
-            {
-                cellBackgroundColor = "blue";
-            }
-
-            bool isHighlighted = IsHighlighted(row, col);
-
-            <button @onclick="OnMouseClickHandler" @ref="cellRef" class="cell"
-                    disabled="@(!IsPlacingBoats)"
+            <button @onclick="(e) => OnMouseClickHandler(e, playerPosition)" class="cell"
+                    @ref="cellRef"
+                    disabled="@isDisabled"
                     style="background-color: @(cellBackgroundColor);
-                               @(IsHighlighted(row, col) ? "outline: 2px solid yellow;" : "");
-                               @(ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]) && IsHighlighted(row, col) ? "outline: 2px solid red;" : "")">
+                           @(IsHighlighted(row, col) ? "outline: 2px solid yellow;" : "");
+                           @(ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]) && IsHighlighted(row, col) ? "outline: 2px solid red;" : "")">
             </button>
         }
     }
@@ -47,160 +27,123 @@
     public PositionData[][] PositionsData { get; set; }
     [Parameter]
     public bool IsPlacingBoats { get; set; }
-    bool isVertical = false;
-    int size = 5;
-    int indexBoat = 0;
-    int gridSize = 10;
-    IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
 
-    int mouseRow = -1;
-    int mouseCol = -1;
-    ElementReference playerGridRef;
-    ElementReference cellRef;
-    double gridX = 0, gridY = 0;
+    private bool isVertical;
+    private int indexBoat;
+    private int gridSize = 10;
+    private IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
+    private int mouseRow = -1;
+    private int mouseCol = -1;
+    private ElementReference playerGridRef; 
+    private ElementReference cellRef;
+    private double gridX, gridY;
 
     [Parameter]
     public EventCallback OnTogglePlacingBoats { get; set; }
 
-    private void TooglePlacingBoats()
+    private bool CheckBoatPlacementValidity()
     {
-        // Notify the parent to change the state
-        OnTogglePlacingBoats.InvokeAsync();
-    }
-
-    public async Task PlaceBoat(MouseEventArgs e)
-    {
-        if (IsPlacingBoats)
+        if (ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]))
         {
-            if (gridX == 0 && gridY == 0)
-            {
-                var rect = await JsRuntime.InvokeAsync<BoundingClientRect>("getGridBoundingRect", playerGridRef);
-                gridX = rect.Left;
-                gridY = rect.Top;
-            }
-
-            var cellSize = await JsRuntime.InvokeAsync<int>("getCellSize", cellRef);
-
-            int relativeX = (int)(e.ClientX - gridX);
-            int relativeY = (int)(e.ClientY - gridY);
-
-            mouseRow = relativeY / cellSize;
-            mouseCol = relativeX / cellSize;
-
-            if (mouseRow < 0 || mouseRow >= gridSize || mouseCol < 0 || mouseCol >= gridSize)
-            {
-                mouseRow = -1;
-                mouseCol = -1;
-            }
+            Console.WriteLine("Les bateaux se chevauchent !");
+            return false;
         }
+        return true;
     }
 
-    public async Task OnMouseMoveHandler(MouseEventArgs e)
+    private async Task PlaceBoat(MouseEventArgs e)
     {
-        await PlaceBoat(e);
+        if (!IsPlacingBoats) return;
+
+        if (gridX == 0 && gridY == 0)
+        {
+            var rect = await JsRuntime.InvokeAsync<BoundingClientRect>("getGridBoundingRect", playerGridRef);
+            gridX = rect.Left;
+            gridY = rect.Top;
+        }
+
+        var cellSize = await JsRuntime.InvokeAsync<int>("getCellSize", cellRef);
+        int relativeX = (int)(e.ClientX - gridX);
+        int relativeY = (int)(e.ClientY - gridY);
+
+        mouseRow = (relativeY < 0 || relativeY / cellSize >= gridSize) ? -1 : relativeY / cellSize;
+        mouseCol = (relativeX < 0 || relativeX / cellSize >= gridSize) ? -1 : relativeX / cellSize;
+    }
+
+    public async Task OnMouseMoveHandler(MouseEventArgs e) => await PlaceBoat(e);
+
+    private string GetCellBackgroundColor(Position playerPosition, int col, int row)
+    {
+        string color = "transparent";
+        if (GameService.IsBoatAtPosition(playerPosition))
+            color = "lightgray";
+        if (PositionState.MISS.Equals(PositionsData[col][row].State))
+            color = "blue";
+        if (PositionState.HIT.Equals(PositionsData[col][row].State))
+            color = "red";
+
+        return color;
     }
 
     private bool ArePositionsOverlapping(int mouseRow, int mouseCol, bool isVertical, int boatSize)
     {
-        List<Position> newPositions = new List<Position>();
-        for (int i = 0; i < boatSize; i++)
+        return GameService.boats.Any(boat =>
+            boat.Positions.Any(existingPosition =>
+            Enumerable.Range(0, boatSize).Any(i =>
+                existingPosition.X == (isVertical ? mouseCol : mouseCol + i) &&
+                existingPosition.Y == (isVertical ? mouseRow + i : mouseRow)
+            )));
+    }
+
+    public async Task OnMouseClickHandler(MouseEventArgs e, Position position)
+    {
+        if (!IsPlacingBoats || !CanPlaceBoat()) return;
+
+        var boatPositions = GetBoatPositions(position);
+        if (ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]))
         {
-            Position position;
-            if (isVertical)
-            {
-                position = new Position(mouseCol, mouseRow + i);
-            }
-            else
-            {
-                position = new Position(mouseCol + i, mouseRow);
-            }
-            newPositions.Add(position);
+            Console.WriteLine("Les bateaux se chevauchent !");
+            return;
         }
 
-        foreach (var boat in GameService.boats)
+        GameService.PlaceBoat(boatPositions);
+        if (indexBoat == sizes.Count - 1)
         {
-            foreach (var existingPosition in boat.Positions)
-            {
-                foreach (var newPosition in newPositions)
-                {
-                    if (existingPosition.X == newPosition.X && existingPosition.Y == newPosition.Y)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    public async void OnMouseClickHandler(MouseEventArgs e)
-    {
-        if (IsPlacingBoats)
-        {
-            if (CanPlaceBoat())
-            {
-                int size = sizes[indexBoat];
-                List<Position> boatPositions = new List<Position>();
-                for (int i = 0; i < size; i++)
-                {
-                    Position position;
-                    if (isVertical)
-                    {
-                        position = new Position(mouseCol, mouseRow + i);
-                    }
-                    else
-                    {
-                        position = new Position(mouseCol + i, mouseRow);
-                    }
-                    boatPositions.Add(position);
-                }
-
-                if (ArePositionsOverlapping(mouseRow, mouseCol, isVertical, size))
-                {
-                    Console.WriteLine("Les bateaux se chevauchent !");
-                    return;
-                }
-
-                GameService.PlaceBoat(boatPositions);
-
-                if (indexBoat == 4)
-                {
-                    TooglePlacingBoats();
-                    await GameService.PlaceBoats();
-                }
-                else
-                {
-                    indexBoat += 1;
-                }
-            }
-        }
-    }
-
-    public void OnMouseWheelHandler(WheelEventArgs e)
-    {
-        isVertical = !isVertical;
-    }
-
-    private bool IsHighlighted(int row, int col)
-    {
-        if (mouseRow == -1 || mouseCol == -1) return false;
-
-        return IsPlacingBoats && CanPlaceBoat() &&
-               ((isVertical && col == mouseCol && row >= mouseRow && row < mouseRow + sizes[indexBoat]) ||
-               (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
-    }
-
-    private bool CanPlaceBoat()
-    {
-        if (isVertical)
-        {
-            return mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < gridSize;
+            await GameService.PlaceBoats();
+            TogglePlacingBoats();
         }
         else
         {
-            return mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < gridSize;
+            indexBoat++;
         }
     }
+
+    private List<Position> GetBoatPositions(Position position)
+    {
+        int size = sizes[indexBoat];
+        var boatPositions = new List<Position>();
+
+        for (int i = 0; i < size; i++)
+        {
+            boatPositions.Add(isVertical ? new Position(position.X, position.Y + i) : new Position(position.X + i, position.Y));
+        }
+
+        return boatPositions;
+    }
+
+    public void OnMouseWheelHandler(WheelEventArgs e) => isVertical = !isVertical;
+
+    private bool IsHighlighted(int row, int col) =>
+        mouseRow != -1 && mouseCol != -1 &&
+        IsPlacingBoats && CanPlaceBoat() &&
+        ((isVertical && col == mouseCol && row >= mouseRow && row < mouseRow + sizes[indexBoat]) ||
+        (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
+
+    private bool CanPlaceBoat() =>
+        isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < gridSize :
+                     mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < gridSize;
+
+    private void TogglePlacingBoats() => OnTogglePlacingBoats.InvokeAsync();
 
     public class BoundingClientRect
     {

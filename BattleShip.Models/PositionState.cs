@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace BattleShip.Models;
 
-public class PositionData
+public enum PositionState
 {
-    public Position Position { get; set; }
-    public PositionState? State { get; set; }
+    HIT,   
+    MISS
 }
