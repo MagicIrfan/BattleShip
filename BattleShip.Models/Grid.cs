@@ -1,18 +1,21 @@
-﻿namespace BattleShip.Models;
+﻿using BattleShip.Models;
 
 public class Grid
 {
-    public Position[][] Positions { get; set; }
+    public PositionData[][] PositionsData { get; set; }
 
     public Grid(int rows, int cols)
     {
-        Positions = new Position[rows][];
+        PositionsData = new PositionData[rows][];
         for (int i = 0; i < rows; i++)
         {
-            Positions[i] = new Position[cols];
+            PositionsData[i] = new PositionData[cols];
             for (int j = 0; j < cols; j++)
             {
-                Positions[i][j] = new Position(i, j);
+                PositionsData[i][j] = new PositionData
+                {
+                    Position = new Position(i, j)
+                };
             }
         }
     }

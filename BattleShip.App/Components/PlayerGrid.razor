@@ -2,21 +2,38 @@
 @inject IJSRuntime JsRuntime
 
 <div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef">
-    @for (int row = 0; row < GameService.playerGrid.Positions.Length; row++)
+    @for (int row = 0; row < PositionsData.Length; row++)
     {
-        @for (int col = 0; col < GameService.playerGrid.Positions[0].Length; col++)
+        @for (int col = 0; col < PositionsData[0].Length; col++)
         {
             var currentRow = row;
             var currentCol = col;
 
-            Position playerPosition = GameService.playerGrid.Positions[col][row];
+            Position playerPosition = PositionsData[col][row].Position;
 
             bool boatPresent = GameService.IsBoatAtPosition(playerPosition);
-            string cellBackgroundColor = boatPresent ? "lightgray" : "";
+
+            string cellBackgroundColor = "";
+
+            if (boatPresent)
+            {
+                cellBackgroundColor = "lightgray";
+            }
+
+            if (playerPosition.IsHit)
+            {
+                cellBackgroundColor = "red";
+            }
+
+            if (PositionsData[col][row].isMiss)
+            {
+                cellBackgroundColor = "blue";
+            }
 
             bool isHighlighted = IsHighlighted(row, col);
 
             <button @onclick="OnMouseClickHandler" @ref="cellRef" class="cell"
+                    disabled="@(!IsPlacingBoats)"
                     style="background-color: @(cellBackgroundColor);
                                @(IsHighlighted(row, col) ? "outline: 2px solid yellow;" : "");
                                @(ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]) && IsHighlighted(row, col) ? "outline: 2px solid red;" : "")">
@@ -27,8 +44,9 @@
 
 @code {
     [Parameter]
-    public Position[][] Positions { get; set; }
-    bool isPlacingBoats = true;
+    public PositionData[][] PositionsData { get; set; }
+    [Parameter]
+    public bool IsPlacingBoats { get; set; }
     bool isVertical = false;
     int size = 5;
     int indexBoat = 0;
@@ -41,9 +59,18 @@
     ElementReference cellRef;
     double gridX = 0, gridY = 0;
 
+    [Parameter]
+    public EventCallback OnTogglePlacingBoats { get; set; }
+
+    private void TooglePlacingBoats()
+    {
+        // Notify the parent to change the state
+        OnTogglePlacingBoats.InvokeAsync();
+    }
+
     public async Task PlaceBoat(MouseEventArgs e)
     {
-        if (isPlacingBoats)
+        if (IsPlacingBoats)
         {
             if (gridX == 0 && gridY == 0)
             {
@@ -108,7 +135,7 @@
 
     public async void OnMouseClickHandler(MouseEventArgs e)
     {
-        if (isPlacingBoats)
+        if (IsPlacingBoats)
         {
             if (CanPlaceBoat())
             {
@@ -138,7 +165,7 @@
 
                 if (indexBoat == 4)
                 {
-                    isPlacingBoats = false;
+                    TooglePlacingBoats();
                     await GameService.PlaceBoats();
                 }
                 else
@@ -158,7 +185,7 @@
     {
         if (mouseRow == -1 || mouseCol == -1) return false;
 
-        return isPlacingBoats && CanPlaceBoat() &&
+        return IsPlacingBoats && CanPlaceBoat() &&
                ((isVertical && col == mouseCol && row >= mouseRow && row < mouseRow + sizes[indexBoat]) ||
                (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
     }

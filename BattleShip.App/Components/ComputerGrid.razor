@@ -1,19 +1,31 @@
 ﻿@inject IGameService GameService
 
+<p>Is Placing Boats in Child: @IsPlacingBoats</p>
 <div class="grid">
-    @for (int row = 0; row < Positions.Length; row++)
+    @for (int row = 0; row < PositionsData.Length; row++)
     {
-        @for (int col = 0; col < Positions[0].Length; col++)
+        @for (int col = 0; col < PositionsData[0].Length; col++)
         {
             var currentRow = row;
             var currentCol = col;
 
-            Position opponentPosition = Positions[col][row];
+            Position opponentPosition = PositionsData[col][row].Position;
 
-            string cellBackGroundColor = opponentPosition.IsHit ? "red" : "";
+            string cellBackGroundColor = "";
 
-            <button class="cell" @onclick="() => GameService.Attack(opponentPosition)"
-                    style="background-color: @(cellBackGroundColor)">
+            if (opponentPosition.IsHit)
+            {
+                cellBackGroundColor = "red";
+            }
+
+            if (PositionsData[col][row].isMiss)
+            {
+                cellBackGroundColor = "blue";
+            }
+
+            <button class="cell" @onclick="() => Attack(opponentPosition)"
+                    style="background-color: @(cellBackGroundColor)"
+                    disabled="@(opponentPosition.IsHit || PositionsData[col][row].isMiss || IsPlacingBoats)">
             </button>
         }
     }
@@ -21,10 +33,14 @@
 
 @code {
     [Parameter]
-    public Position[][] Positions { get; set; }
+    public PositionData[][] PositionsData { get; set; }
+    [Parameter]
+    public bool IsPlacingBoats { get; set; }
+
     private async Task Attack(Position position)
     {
         await GameService.Attack(position);
+        StateHasChanged();
     }
 }
 
