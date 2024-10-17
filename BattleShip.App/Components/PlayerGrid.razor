@@ -11,7 +11,7 @@
 
             Position playerPosition = GameService.playerGrid.Positions[col][row];
 
-            bool boatPresent = IsBoatAtPosition(playerPosition);
+            bool boatPresent = GameService.IsBoatAtPosition(playerPosition);
             string cellBackgroundColor = boatPresent ? "lightgray" : "";
 
             bool isHighlighted = IsHighlighted(row, col);
@@ -26,8 +26,8 @@
 </div>
 
 @code {
-	[Parameter]
-	public Position[][] Positions { get; set; }
+    [Parameter]
+    public Position[][] Positions { get; set; }
     bool isPlacingBoats = true;
     bool isVertical = false;
     int size = 5;
@@ -71,21 +71,6 @@
     public async Task OnMouseMoveHandler(MouseEventArgs e)
     {
         await PlaceBoat(e);
-    }
-
-    public bool IsBoatAtPosition(Position position)
-    {
-        foreach (var boat in GameService.boats)
-        {
-            foreach (var boatPosition in boat.Positions)
-            {
-                if (boatPosition.X == position.X && boatPosition.Y == position.Y)
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private bool ArePositionsOverlapping(int mouseRow, int mouseCol, bool isVertical, int boatSize)
@@ -149,9 +134,8 @@
                     return;
                 }
 
-                GameService.boats.Add(new Boat(boatPositions));
-                string json = JsonSerializer.Serialize(GameService.boats, new JsonSerializerOptions { WriteIndented = true });
-                Console.WriteLine(json);
+                GameService.PlaceBoat(boatPositions);
+
                 if (indexBoat == 4)
                 {
                     isPlacingBoats = false;
@@ -161,7 +145,6 @@
                 {
                     indexBoat += 1;
                 }
-                Console.WriteLine(indexBoat);
             }
         }
     }
@@ -212,3 +195,42 @@
         return parseInt(style.width);
     };
 </script>
+
+<style>
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        grid-template-rows: repeat(10, 1fr);
+        gap: 5px;
+        background-color: #dce7f1;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .cell {
+        width: 40px;
+        height: 40px;
+        border: 1px solid #b0c4de;
+        border-radius: 4px;
+        position: relative;
+    }
+
+        .cell:not([disabled]):hover {
+            background-color: #7fc9ff;
+        }
+
+        .cell:not([disabled]) {
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+    .boat-symbol {
+        font-weight: bold;
+        color: darkblue;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+</style>

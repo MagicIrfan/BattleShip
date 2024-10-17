@@ -13,6 +13,8 @@ public interface IGameService
     Task StartGame();
     Task PlaceBoats();
     Task Attack(Position attackPosition);
+    void PlaceBoat(List<Position> positions);
+    bool IsBoatAtPosition(Position position);
 }
 
 public class GameService : IGameService
@@ -90,7 +92,7 @@ public class GameService : IGameService
             Console.WriteLine(jsonString);
             using (JsonDocument doc = JsonDocument.Parse(jsonString))
             {
-                var playerAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
+                /*var playerAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
                 if ("Hit".Equals(playerAttackResult))
                 {
                     attackPosition.IsHit = true;
