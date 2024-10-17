@@ -1,4 +1,4 @@
-﻿using BattleShip.Components;
+﻿using BattleShip.Exceptions;
 using BattleShip.Models;
 using Microsoft.AspNetCore.Components;
 using System.Text.Json;
@@ -11,6 +11,7 @@ public interface IGameService
     List<Boat> boats { get; set; }
     Grid playerGrid { get; set; }
     Grid opponentGrid { get; set; }
+    List<string> historique { get; set; }
     Task StartGame();
     Task PlaceBoats();
     Task Attack(Position attackPosition);
@@ -24,6 +25,7 @@ public class GameService : IGameService
     public required List<Boat> boats { get; set; } = new List<Boat>();
     public required Grid playerGrid { get; set; }
     public required Grid opponentGrid { get; set; }
+    public required List<string> historique { get; set; }
     private Dictionary<Position, Boat> boatPositions = new Dictionary<Position, Boat>();
 
     private readonly IGameModalService _modalService;
@@ -88,31 +90,78 @@ public class GameService : IGameService
         if (playerAttackResponse.IsSuccessStatusCode)
         {
             var jsonString = await playerAttackResponse.Content.ReadAsStringAsync();
-            Console.WriteLine(jsonString);
 
             var attackResponse = JsonSerializer.Deserialize<AttackResponse>(jsonString, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
 
-            if (attackResponse != null)
+            if (attackResponse == null)
             {
-                Position oponnentPosition = attackResponse.PlayerAttackPosition;
-                oponnentPosition.IsHit = attackResponse.PlayerIsHit;
-                opponentGrid.PositionsData[attackPosition.X][attackPosition.Y].Position = oponnentPosition;
-                opponentGrid.PositionsData[attackPosition.X][attackPosition.Y].isMiss = !attackResponse.PlayerIsHit;
+                throw new Exception("Invalid response from the server.");
+            }
 
-                Position playerPosition = attackResponse.AiAttackPosition;
-                playerPosition.IsHit = attackResponse.AiIsHit;
-                playerGrid.PositionsData[playerPosition.X][playerPosition.Y].Position = playerPosition;
-                playerGrid.PositionsData[playerPosition.X][playerPosition.Y].isMiss = !attackResponse.AiIsHit;
+            Console.WriteLine(jsonString);
+
+            UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, opponentGrid);
+
+            if (attackResponse.PlayerIsWinner)
+            {
+                Console.WriteLine("Le joueur a gagné !");
+            }
+
+			historique.Add($"Le joueur 1 a attaqué la position {attackResponse.PlayerAttackPosition.X}, {attackResponse.PlayerAttackPosition.Y}");
+			if (attackResponse.PlayerIsHit)
+			{
+				historique.Add($"Le joueur 1 a touché un bateau");
+			}
+			else
+			{
+				historique.Add($"Le joueur 1 s'est raté");
+			}
+
+			if (attackResponse.PlayerIsSunk)
+            {
+                historique.Add("Le joueur 1 a coulé un bateau !");
+            }
+
+            UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit, playerGrid);
+
+			historique.Add($"L'ordinateur a attaqué la position {attackResponse.AiAttackPosition.X}, {attackResponse.AiAttackPosition.Y}");
+            if (attackResponse.AiIsHit)
+            {
+				historique.Add($"L'ordinateur a touché un bateau !");
+			}
+            else
+            {
+				historique.Add($"L'ordinateur s'est raté");
+			}
+
+			if (attackResponse.AiIsSunk)
+			{
+				historique.Add("L'ordinateur a coulé un bateau !");
+			}
+
+			if (attackResponse.AiIsWinner)
+            {
+                Console.WriteLine("L'ordinateur a gagné !");
             }
         }
-        else
+
+		else
         {
-            throw new Exception($"Error calling attack: {playerAttackResponse.StatusCode}");
+            throw new AttackException($"Error calling attack: {playerAttackResponse.StatusCode}", playerAttackResponse.StatusCode);
         }
     }
+
+    private void UpdateGrid(Position position, bool isHit, Grid grid)
+    {
+        position.IsHit = isHit;
+        var state = isHit ? PositionState.HIT : PositionState.MISS;
+        grid.PositionsData[position.X][position.Y].Position = position;
+        grid.PositionsData[position.X][position.Y].State = state;
+    }
+
 
 
     public void PlaceBoat(List<Position> positions)

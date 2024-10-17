@@ -1,8 +1,5 @@
 ﻿using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
-using System;
-using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace BattleShip.Services;
 

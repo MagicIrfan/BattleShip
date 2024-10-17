@@ -8,9 +8,10 @@
 <main>
     @if (GameService.gameId != null)
     {
+        <Historique/>
         <div class="grids">
             <PlayerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
-            <ComputerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.opponentGrid.PositionsData"></ComputerGrid>
+            <ComputerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></ComputerGrid>
         </div>
     }
     else
@@ -34,6 +35,14 @@
     {
         isPlacingBoats = !isPlacingBoats;
     }
+
+    private async Task HandleAttack(Position position)
+    {
+        await GameService.Attack(position);
+
+        StateHasChanged(); 
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await GameService.StartGame();

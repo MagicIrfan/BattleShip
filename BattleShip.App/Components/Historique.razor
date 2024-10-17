@@ -1,0 +1,13 @@
+﻿@inject IGameService GameService
+
+<div>
+    @foreach (var item in GameService.historique)
+    {
+        <p>@item</p>
+    }
+</div>
+
+@code
+{
+
+}
