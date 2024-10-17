@@ -9,8 +9,8 @@
     @if (GameService.gameId != null)
     {
         <div class="grids">
-            <PlayerGrid Positions="GameService.playerGrid.Positions"></PlayerGrid>
-            <ComputerGrid Positions="GameService.opponentGrid.Positions"></ComputerGrid>
+            <PlayerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
+            <ComputerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.opponentGrid.PositionsData"></ComputerGrid>
         </div>
     }
     else
@@ -29,6 +29,11 @@
 </style>
 
 @code {
+    bool isPlacingBoats = true;
+    private void TogglePlacingBoats()
+    {
+        isPlacingBoats = !isPlacingBoats;
+    }
     protected override async Task OnInitializedAsync()
     {
         await GameService.StartGame();

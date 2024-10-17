@@ -1,4 +1,5 @@
-﻿using BattleShip.Models;
+﻿using BattleShip.Components;
+using BattleShip.Models;
 using Microsoft.AspNetCore.Components;
 using System.Text.Json;
 
@@ -7,7 +8,7 @@ namespace BattleShip.Services;
 public interface IGameService
 {
     Guid? gameId { get; set; }
-    List<Boat>? boats { get; set; }
+    List<Boat> boats { get; set; }
     Grid playerGrid { get; set; }
     Grid opponentGrid { get; set; }
     Task StartGame();
@@ -20,7 +21,7 @@ public interface IGameService
 public class GameService : IGameService
 {
     public Guid? gameId { get; set; }
-    public List<Boat>? boats { get; set; }
+    public required List<Boat> boats { get; set; } = new List<Boat>();
     public required Grid playerGrid { get; set; }
     public required Grid opponentGrid { get; set; }
     private Dictionary<Position, Boat> boatPositions = new Dictionary<Position, Boat>();
@@ -56,7 +57,6 @@ public class GameService : IGameService
                     gameId = Guid.Parse(result);
                     playerGrid = new Grid(10, 10);
                     opponentGrid = new Grid(10, 10);
-                    boats = new List<Boat>();
                 }
             }
         }
@@ -82,36 +82,46 @@ public class GameService : IGameService
     public async Task Attack(Position attackPosition)
     {
         var json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
-        Console.WriteLine(gameId);
-        Console.WriteLine(json);
         var attackRequest = new AttackModel.AttackRequest(gameId ?? Guid.Empty, attackPosition);
         var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", attackRequest);
+
         if (playerAttackResponse.IsSuccessStatusCode)
         {
             var jsonString = await playerAttackResponse.Content.ReadAsStringAsync();
             Console.WriteLine(jsonString);
-            using (JsonDocument doc = JsonDocument.Parse(jsonString))
+
+            var attackResponse = JsonSerializer.Deserialize<AttackResponse>(jsonString, new JsonSerializerOptions
             {
-                /*var playerAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
-                if ("Hit".Equals(playerAttackResult))
-                {
-                    attackPosition.IsHit = true;
-                }
-                Console.WriteLine(playerAttackResult);
-                var computerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", new AttackModel.AttackRequest(gameId ?? Guid.Empty, null));
-                if (computerAttackResponse.IsSuccessStatusCode)
-                {
-                    var opponentAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
-                    if ("Hit".Equals(playerAttackResult))
-                    {
-                        attackPosition.IsHit = true;
-                    }
-                }
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (attackResponse != null)
+            {
+                Position oponnentPosition = attackResponse.PlayerAttackPosition;
+                oponnentPosition.IsHit = attackResponse.PlayerIsHit;
+                opponentGrid.PositionsData[attackPosition.X][attackPosition.Y].Position = oponnentPosition;
+                opponentGrid.PositionsData[attackPosition.X][attackPosition.Y].isMiss = !attackResponse.PlayerIsHit;
+
+                Position playerPosition = attackResponse.AiAttackPosition;
+                playerPosition.IsHit = attackResponse.AiIsHit;
+                playerGrid.PositionsData[playerPosition.X][playerPosition.Y].Position = playerPosition;
+                playerGrid.PositionsData[playerPosition.X][playerPosition.Y].isMiss = !attackResponse.AiIsHit;
             }
         }
         else
         {
-            throw new Exception($"Error calling startGame: {playerAttackResponse.StatusCode}");
+            throw new Exception($"Error calling attack: {playerAttackResponse.StatusCode}");
         }
+    }
+
+
+    public void PlaceBoat(List<Position> positions)
+    {
+        boats.Add(new Boat(positions));
+    }
+
+    public bool IsBoatAtPosition(Position position)
+    {
+        return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
     }
 }
