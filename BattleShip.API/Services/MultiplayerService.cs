@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using BattleShip.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -27,14 +28,12 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
 
         var profileResult = await authenticationService.Profile();
 
-        /*if (profileResult is not OkResult okResult)
-            throw new UnauthorizedAccessException("Unable to get user profile");
-
-        var playerInfo = okResult.Value as Dictionary<string, object>;
-
-        string username = playerInfo?["UserName"]?.ToString();
-        string picture = playerInfo?["Picture"]?.ToString();*/
-
+        if (profileResult is Ok<object> okResult)
+        {
+            var playerInfo = okResult.Value as Dictionary<string, object>;
+            var username = playerInfo?["UserName"].ToString();
+            var picture = playerInfo?["Picture"].ToString();
+        }
         
         LobbyModel lobby;
 
