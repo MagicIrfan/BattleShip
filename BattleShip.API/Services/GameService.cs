@@ -9,8 +9,8 @@ namespace BattleShip.API.Services;
 
 public interface IGameService
 {
-    Task<object> ProcessAttack(AttackRequest attackRequest,
-        IValidator<AttackRequest> validator);
+    Task<AttackModel.AttackResponse> ProcessAttack(AttackModel.AttackRequest attackRequest,
+        IValidator<AttackModel.AttackRequest> validator);
 
     Task<IResult> RollbackTurn(Guid gameId);
     Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
@@ -22,18 +22,18 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
 {
     private HttpContext Context => httpContextAccessor.HttpContext!;
 
-    public async Task<object> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator)
+    public async Task<AttackModel.AttackResponse> ProcessAttack(AttackModel.AttackRequest attackRequest, IValidator<AttackModel.AttackRequest> validator)
 {
     var playerId = Context.User.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-                   ?? throw new UnauthorizedAccessException("User not recognized");
+        .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+        ?? throw new UnauthorizedAccessException("User not recognized");
 
     var validationResult = await validator.ValidateAsync(attackRequest);
     if (!validationResult.IsValid)
         throw new ValidationException("Invalid attack request", validationResult.Errors);
 
     var gameState = gameRepository.GetGame(attackRequest.GameId)
-                    ?? throw new KeyNotFoundException("Game not found");
+        ?? throw new KeyNotFoundException("Game not found");
 
     GameHelper.ValidateTurn(gameState, playerId);
 
@@ -46,24 +46,33 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
     gameState.AttackHistory.Add(playerAttackRecord);
     gameRepository.UpdateGame(gameState);
 
+    var response = new AttackModel.AttackResponse
+    {
+        PlayerIsHit = playerIsHit,
+        PlayerIsSunk = playerIsSunk,
+        PlayerIsWinner = playerIsWinner,
+        PlayerAttackPosition = attackRequest.AttackPosition
+    };
+
     if (!gameState.IsMultiplayer)
     {
         var aiAttackRequest = await IaHelper.GenerateIaAttackRequest(gameState);
         var aiBoats = GameHelper.GetPlayerBoats(gameState, "IA");
         
         var (aiIsHit, aiIsSunk, _) = AttackHelper.ProcessAttack(aiBoats, aiAttackRequest);
-        
-        var aiAttackRecord = new GameState.AttackRecord(aiAttackRequest, "IA", aiIsHit, aiIsSunk);
-        gameState.AttackHistory.Add(aiAttackRecord);
-        
         var aiIsWinner = GameHelper.UpdateGameState(gameState, "IA", updatedPlayerBoats, gameRepository);
 
+        var aiAttackRecord = new GameState.AttackRecord(aiAttackRequest, "IA", aiIsHit, aiIsSunk);
+        gameState.AttackHistory.Add(aiAttackRecord);
         gameRepository.UpdateGame(gameState);
 
-        return (playerIsHit, playerIsSunk, playerIsWinner, aiIsHit, aiIsSunk, aiIsWinner, aiAttackRequest);
+        response.AiIsHit = aiIsHit;
+        response.AiIsSunk = aiIsSunk;
+        response.AiIsWinner = aiIsWinner;
+        response.AiAttackPosition = aiAttackRequest;
     }
 
-    return (playerIsHit, playerIsSunk, playerIsWinner, attackRequest.AttackPosition);
+    return response;
 }
 
 

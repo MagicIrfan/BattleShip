@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace BattleShip.API;
 
 [Authorize]
-public class GameHub(IMultiplayerService multiplayerService, IValidator<AttackRequest> validator, IValidator<Boat> boatValidator, IGameRepository gameRepository) : Hub
+public class GameHub(IMultiplayerService multiplayerService, IValidator<AttackModel.AttackRequest> validator, IValidator<Boat> boatValidator, IGameRepository gameRepository) : Hub
 {
     private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
 

@@ -18,7 +18,7 @@ builder.Services.AddScoped<IMultiplayerService, MultiplayerService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 builder.Services.AddSingleton<IGameRepository, GameRepository>();
-builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<AttackModel.AttackRequestValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<StartGameRequestValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<BoatValidator>();
 
@@ -121,7 +121,7 @@ gameMethodsGroup.MapPost("/rollback", [Authorize] async ([FromQuery] Guid gameId
     }
 });
 
-gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackRequest attackRequest, IValidator<AttackRequest> validator,[FromServices] IGameService gameService) =>
+gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackModel.AttackRequest attackRequest, IValidator<AttackModel.AttackRequest> validator,[FromServices] IGameService gameService) =>
 {
     try
     {

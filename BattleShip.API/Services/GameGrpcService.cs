@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BattleShip.API.Services;
 
-public class GameGrpcService(IGameService gameService, IValidator<Models.AttackRequest> attackRequestValidator, IValidator<Models.StartGameRequest> startGameRequestValidator, IValidator<Models.Boat> boatValidator) : Grpc.GameService.GameServiceBase
+public class GameGrpcService(IGameService gameService, IValidator<Models.AttackModel.AttackRequest> attackRequestValidator, IValidator<Models.StartGameRequest> startGameRequestValidator, IValidator<Models.Boat> boatValidator) : Grpc.GameService.GameServiceBase
 {
     [Authorize]
     public override async Task<StartGameResponse> StartGame(StartGameRequest request, ServerCallContext context)
