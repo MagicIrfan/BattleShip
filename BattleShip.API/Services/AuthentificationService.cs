@@ -39,8 +39,9 @@ public class AuthenticationService(IHttpContextAccessor httpContextAccessor) : I
 
         return Results.Ok(new
         {
-            UserName = content["nickname"]?.ToString(),
-            Picture = content["picture"]?.ToString()
+            UserName = content["nickname"].ToString(),
+            Picture = content["picture"].ToString(),
+            
         });
     }
     

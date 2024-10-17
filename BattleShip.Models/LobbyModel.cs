@@ -1,39 +1,55 @@
 ﻿namespace BattleShip.Models;
 
-public class LobbyModel(Guid gameId, string playerOneId)
+public class LobbyModel(Guid gameId)
 {
     public Guid GameId { get; set; } = gameId;
-    public string? PlayerOneId { get; set; } = playerOneId;
+    public string? PlayerOneId { get; set; }
     public string? PlayerTwoId { get; set; }
     public bool PlayerOneReady { get; set; }
     public bool PlayerTwoReady { get; set; }
     
-    public void AssignPlayer(string playerId)
+    private Dictionary<string, PlayerInfo> PlayerInfo { get; } = new();
+    
+    public void AssignPlayer(string playerId, string username, string profilePicture)
     {
+        var playerInfo = new PlayerInfo()
+        {
+            Username = username,
+            Picture = profilePicture
+        };
+        
         if (string.IsNullOrEmpty(PlayerOneId))
+        {
+            
             PlayerOneId = playerId;
-        if (string.IsNullOrEmpty(PlayerTwoId))
+            PlayerInfo[playerId] = playerInfo;
+        }
+        else if (string.IsNullOrEmpty(PlayerTwoId))
+        {
             PlayerTwoId = playerId;
+            PlayerInfo[playerId] = playerInfo;
+        }
     }
 
     public bool IsFull() => !string.IsNullOrEmpty(PlayerTwoId) && !string.IsNullOrEmpty(PlayerOneId);
         
-    public List<string> GetPlayerList()
+    public List<PlayerInfo> GetPlayerList()
     {
-        var players = new List<string>();
-        if (!string.IsNullOrEmpty(PlayerOneId))
-            players.Add(PlayerOneId);
-        if (!string.IsNullOrEmpty(PlayerTwoId))
-            players.Add(PlayerTwoId);
-        return players;
+        return PlayerInfo.Values.ToList();
     }
 
     public void RemovePlayer(string playerId)
     {
         if (PlayerOneId == playerId)
+        {
+            PlayerInfo.Remove(playerId);
             PlayerOneId = null;
+        }
         else if (PlayerTwoId == playerId)
+        {
+            PlayerInfo.Remove(playerId);
             PlayerTwoId = null;
+        }
     }
     
     public void SetPlayerReady(string playerId)

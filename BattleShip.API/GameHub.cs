@@ -12,9 +12,9 @@ public class GameHub(IMultiplayerService multiplayerService, IValidator<AttackMo
 {
     private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
 
-    public async Task JoinLobby(Guid gameId)
+    public async Task JoinLobby(Guid gameId, string username, string picture)
     {
-        await multiplayerService.JoinLobby(gameId, Context);
+        await multiplayerService.JoinLobby(gameId, username, picture, Context);
     }
 
     public async Task SetReady(Guid gameId)

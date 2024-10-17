@@ -1,24 +1,22 @@
 ﻿using System.Security.Claims;
 using BattleShip.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BattleShip.API.Services;
 
 public interface IMultiplayerService
 {
-    Task JoinLobby(Guid gameId, HubCallerContext context);
+    Task JoinLobby(Guid gameId, string username, string picture, HubCallerContext context);
     Task SetReady(Guid gameId, HubCallerContext context);
     Task LeaveGame(Guid gameId, HubCallerContext context);
     Task OnDisconnectedAsync(Exception? exception, HubCallerContext context);
 }
 
-public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository, IAuthenticationService authenticationService) : IMultiplayerService
+public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository) : IMultiplayerService
 {
     private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
     
-    public async Task JoinLobby(Guid gameId, HubCallerContext context)
+    public async Task JoinLobby(Guid gameId, string username, string picture, HubCallerContext context)
     {
         var playerId = context.User?.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -26,15 +24,6 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
 
-        var profileResult = await authenticationService.Profile();
-
-        if (profileResult is Ok<object> okResult)
-        {
-            var playerInfo = okResult.Value as Dictionary<string, object>;
-            var username = playerInfo?["UserName"].ToString();
-            var picture = playerInfo?["Picture"].ToString();
-        }
-        
         LobbyModel lobby;
 
         if (Lobbies.TryGetValue(gameId, out var value))
@@ -45,10 +34,10 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
                 await gameHub.Clients.Client(context.ConnectionId).SendAsync("AlreadyJoin");
                 return;
             }
-            
+
             if (!lobby.IsFull())
             {
-                lobby.AssignPlayer(playerId);
+                lobby.AssignPlayer(playerId, username, picture);
                 Lobbies[gameId] = lobby;
             }
             else
@@ -60,10 +49,10 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         else
         {
             lobby = new LobbyModel(
-                gameId: gameId,
-                playerOneId: playerId
+                gameId: gameId
             );
 
+            lobby.AssignPlayer(playerId, username, picture);
             Lobbies[gameId] = lobby;
         }
 
@@ -163,7 +152,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         {
             if (Lobbies.TryGetValue(gameId, out var lobby))
             {
-                if (lobby.GetPlayerList().Contains(playerId))
+                /*if (lobby.GetPlayerList().Contains(playerId))
                 {
                     await gameHub.Groups.RemoveFromGroupAsync(context.ConnectionId, gameId.ToString());
 
@@ -177,7 +166,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
                         Lobbies.Remove(gameId);
                     }
                     break;
-                }
+                }*/
             }
         }
     }

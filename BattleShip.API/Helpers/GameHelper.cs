@@ -51,7 +51,7 @@ public static class GameHelper
 
         if (playerId == gameState.PlayerOneId)
         {
-            gameState.PlayerOneBoats = updatedBoats;
+            gameState.PlayerTwoBoats = updatedBoats;
             if (CheckIfAllBoatsSunk(updatedBoats))
             {
                 isWinner = true;
@@ -61,7 +61,7 @@ public static class GameHelper
         }
         else
         {
-            gameState.PlayerTwoBoats = updatedBoats;
+            gameState.PlayerOneBoats = updatedBoats;
             if (CheckIfAllBoatsSunk(updatedBoats))
             {
                 isWinner = true;
