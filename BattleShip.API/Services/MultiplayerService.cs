@@ -85,14 +85,15 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
     
     private async Task StartGame(LobbyModel lobby, Guid gameId)
     {
+        var players = new List<Player>
+        {
+            new(lobby.PlayerOneId!, [], false),
+            new(lobby.PlayerTwoId!, [], false)
+        };
+
         var gameState = new GameState(
             gameId: gameId,
-            playerOneBoats: [],
-            playerTwoBoats: [],
-            isPlayerOneWinner: false,
-            isPlayerTwoWinner: false,
-            playerOneId: lobby.PlayerOneId!,
-            playerTwoId: lobby.PlayerTwoId!,
+            players: players,
             difficulty: 0
         )
         {
@@ -102,6 +103,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         gameRepository.AddGame(gameId, gameState);
         await gameHub.Clients.Group(gameId.ToString()).SendAsync("InitializeGame");
     }
+
     
     public async Task LeaveGame(Guid gameId, HubCallerContext context)
     {
@@ -125,20 +127,21 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
                 Lobbies.Remove(gameId);
             }
         } 
-        
-        if (gameRepository.GetGame(gameId) != null)
+    
+        var gameState = gameRepository.GetGame(gameId);
+        if (gameState != null)
         {
-            var gameState = gameRepository.GetGame(gameId);
             await gameHub.Groups.RemoveFromGroupAsync(context.ConnectionId, gameId.ToString());
 
-            if (gameState!.PlayerOneId == playerId)
-                gameState.IsPlayerTwoWinner = true;
-            else if (gameState.PlayerTwoId == playerId)
-                gameState.IsPlayerOneWinner = true;
-            
-            gameRepository.UpdateGame(gameState);
+            var player = gameState.Players.FirstOrDefault(p => p.PlayerId == playerId);
+            if (player != null)
+            {
+                player.IsPlayerWinner = true; 
+                gameRepository.UpdateGame(gameState);
+            }
         } 
     }
+
     
     public async Task OnDisconnectedAsync(Exception? exception, HubCallerContext context)
     {

@@ -15,41 +15,57 @@ public static class IaHelper
         };
     }
 
-    private static Task<Position> GenerateIaAttackRequestMedium(GameState gameState)
+    private static Task<Position> GenerateIaAttackRequestMedium(GameState gameState) {
+    var gridSize = gameState.GridSize;
+    var random = new Random();
+    var history = gameState.AttackHistory.Where(x => x.PlayerId == "IA").ToList();
+
+    var targetPositions = new HashSet<Position>();
+
+    if (history.Any(h => h.IsHit))
     {
-        var gridSize = gameState.GridSize;
-        var random = new Random();
-        var history = gameState.AttackHistory.Where(x => x.PlayerId == "IA").ToList();
+        var lastHit = history.Last(h => h.IsHit);
+        var hitPosition = lastHit.AttackPosition;
 
-        var targetPositions = new HashSet<Position>();
+        targetPositions.Add(new Position(hitPosition.X - 1, hitPosition.Y));
+        targetPositions.Add(new Position(hitPosition.X + 1, hitPosition.Y));
+        targetPositions.Add(new Position(hitPosition.X, hitPosition.Y - 1));
+        targetPositions.Add(new Position(hitPosition.X, hitPosition.Y + 1));
+    }
 
-        if (history.Any(h => h.IsHit))
+    if (targetPositions.Count == 0)
+    {
+        while (targetPositions.Count < 5)
         {
-            var lastHit = history.Last(h => h.IsHit);
-            var hitPosition = lastHit.AttackPosition;
-
-            targetPositions.Add(new Position(hitPosition.X - 1, hitPosition.Y));
-            targetPositions.Add(new Position(hitPosition.X + 1, hitPosition.Y));
-            targetPositions.Add(new Position(hitPosition.X, hitPosition.Y - 1));
-            targetPositions.Add(new Position(hitPosition.X, hitPosition.Y + 1));
-        }
-
-        if (targetPositions.Count == 0)
-        {
-            while (targetPositions.Count < 5)
+            var attackPosition = new Position(random.Next(0, gridSize), random.Next(0, gridSize));
+            if (!history.Any(h => h.AttackPosition.X == attackPosition.X && h.AttackPosition.Y == attackPosition.Y))
             {
-                var attackPosition = new Position(random.Next(0, gridSize), random.Next(0, gridSize));
                 targetPositions.Add(attackPosition);
             }
         }
-
-        var selectedPosition = targetPositions.FirstOrDefault(pos =>
-                                   pos.X >= 0 && pos.X < gridSize && pos.Y >= 0 && pos.Y < gridSize &&
-                                   !history.Any(h => h.AttackPosition.X == pos.X && h.AttackPosition.Y == pos.Y)) ??
-                               new Position(random.Next(0, gridSize), random.Next(0, gridSize));
-
-        return Task.FromResult(selectedPosition);
     }
+
+    var validPositions = targetPositions.Where(pos =>
+                               pos.X >= 0 && pos.X < gridSize && 
+                               pos.Y >= 0 && pos.Y < gridSize &&
+                               !history.Any(h => h.AttackPosition.X == pos.X && h.AttackPosition.Y == pos.Y)).ToList();
+
+    Position selectedPosition;
+    if (validPositions.Count > 0)
+    {
+        selectedPosition = validPositions.First();
+    }
+    else
+    {
+        selectedPosition = new Position(random.Next(0, gridSize), random.Next(0, gridSize));
+        while (history.Any(h => h.AttackPosition.X == selectedPosition.X && h.AttackPosition.Y == selectedPosition.Y))
+        {
+            selectedPosition = new Position(random.Next(0, gridSize), random.Next(0, gridSize));
+        }
+    }
+
+    return Task.FromResult(selectedPosition);
+}
 
     private static Task<Position> GenerateIaAttackRequestEasy(GameState gameState)
     {
@@ -101,12 +117,22 @@ public static class IaHelper
             }
         }
 
-        var selectedPosition = targetPositions.FirstOrDefault(pos =>
+        Position selectedPosition;
+        var maxAttempts = gridSize * gridSize;
+        var attempts = 0;
+
+        do
+        {
+            selectedPosition = targetPositions.FirstOrDefault(pos =>
                                    pos.X >= 0 && pos.X < gridSize &&
-                                   pos.Y >= 0 && pos.Y < gridSize &&
-                                   history.All(h => h.AttackPosition != pos)) 
+                                   pos.Y >= 0 && pos.Y < gridSize) 
                                ?? new Position(random.Next(0, gridSize), random.Next(0, gridSize));
+        
+            attempts++;
+        } while (history.Any(h => h.AttackPosition.X == selectedPosition.X && 
+                                  h.AttackPosition.Y == selectedPosition.Y) && attempts < maxAttempts);
 
         return Task.FromResult(selectedPosition);
     }
+
 }

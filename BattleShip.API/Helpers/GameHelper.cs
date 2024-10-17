@@ -25,7 +25,7 @@ public static class GameHelper
     {
         if (gameState.AttackHistory.IsNullOrEmpty())
         {
-            if (!gameState.PlayerOneId.Equals(playerId))
+            if (!gameState.Players.Any(p => p.PlayerId.Equals(playerId)))
                 throw new UnauthorizedAccessException("User not allowed to play this turn");
         }
         else if (gameState.AttackHistory.Last().PlayerId.Equals(playerId))
@@ -33,46 +33,40 @@ public static class GameHelper
             throw new UnauthorizedAccessException("User not allowed to play this turn");
         }
     }
-
+    
     public static List<Boat> GetPlayerBoats(GameState gameState, string playerId)
     {
-        return playerId switch
-        {
-            _ when playerId == gameState.PlayerOneId => gameState.PlayerTwoBoats,
-            _ when playerId == gameState.PlayerTwoId || gameState.PlayerTwoId == "IA" => gameState.PlayerOneBoats,
-            _ => throw new UnauthorizedAccessException("Player not recognized in this game.")
-        };
+        var player = gameState.Players.FirstOrDefault(p => p.PlayerId.Equals(playerId));
+
+        if (player == null)
+            throw new UnauthorizedAccessException("Player not recognized in this game.");
+
+        var enemyPlayer = gameState.Players.FirstOrDefault(p => p.PlayerId != playerId);
+        return enemyPlayer?.PlayerBoats ?? [];
     }
+
 
     public static bool UpdateGameState(GameState gameState, string playerId, List<Boat> updatedBoats,
         IGameRepository gameRepository)
     {
         var isWinner = false;
+        var currentPlayer = gameState.Players.FirstOrDefault(p => p.PlayerId.Equals(playerId));
+        var enemyPlayer = gameState.Players.FirstOrDefault(p => p.PlayerId != playerId);
 
-        if (playerId == gameState.PlayerOneId)
+        if (currentPlayer != null && enemyPlayer != null)
         {
-            gameState.PlayerTwoBoats = updatedBoats;
+            enemyPlayer.PlayerBoats = updatedBoats;
+
             if (CheckIfAllBoatsSunk(updatedBoats))
             {
                 isWinner = true;
-                gameState.IsPlayerOneWinner = isWinner;
-                gameRepository.UpdatePlayerWins(playerId);
-            }
-        }
-        else
-        {
-            gameState.PlayerOneBoats = updatedBoats;
-            if (CheckIfAllBoatsSunk(updatedBoats))
-            {
-                isWinner = true;
-                gameState.IsPlayerTwoWinner = isWinner;
+                currentPlayer.IsPlayerWinner = isWinner;
                 gameRepository.UpdatePlayerWins(playerId);
             }
         }
 
         return isWinner;
     }
-
 
     private static bool CheckIfAllBoatsSunk(List<Boat> boats)
     {
