@@ -28,12 +28,13 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException("User not recognized");
 
-        var validationResult = await validator.ValidateAsync(attackRequest);
-        if (!validationResult.IsValid)
-            throw new ValidationException("Invalid attack request", validationResult.Errors);
-
         var gameState = gameRepository.GetGame(attackRequest.GameId)
             ?? throw new KeyNotFoundException("Game not found");
+        
+        var attackRequestValidator = new AttackModel.AttackRequestValidator(gameState.GridSize);
+        var validationResult = await attackRequestValidator.ValidateAsync(attackRequest);
+        if (!validationResult.IsValid)
+            throw new ValidationException("Invalid attack request", validationResult.Errors);
 
         var currentPlayer = gameState.Players.FirstOrDefault(p => p.PlayerId.Equals(playerId));
         if (currentPlayer == null || gameState.Players.Any(p => p.IsPlayerWinner))
