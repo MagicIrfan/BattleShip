@@ -79,10 +79,10 @@ public class GameService : IGameService
 
     public async Task Attack(Position attackPosition)
     {
-        string json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
         Console.WriteLine(gameId);
         Console.WriteLine(json);
-        var attackRequest = new AttackRequest(gameId ?? Guid.Empty, attackPosition);
+        var attackRequest = new AttackModel.AttackRequest(gameId ?? Guid.Empty, attackPosition);
         var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", attackRequest);
         if (playerAttackResponse.IsSuccessStatusCode)
         {
@@ -96,7 +96,7 @@ public class GameService : IGameService
                     attackPosition.IsHit = true;
                 }
                 Console.WriteLine(playerAttackResult);
-                var computerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", new AttackRequest(gameId ?? Guid.Empty, null));
+                var computerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", new AttackModel.AttackRequest(gameId ?? Guid.Empty, null));
                 if (computerAttackResponse.IsSuccessStatusCode)
                 {
                     var opponentAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
