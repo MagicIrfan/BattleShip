@@ -36,8 +36,8 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             ?? throw new KeyNotFoundException("Game not found");
 
         var currentPlayer = gameState.Players.FirstOrDefault(p => p.PlayerId.Equals(playerId));
-        if (currentPlayer == null || currentPlayer.IsPlayerWinner)
-            throw new InvalidOperationException("Player has already won the game.");
+        if (currentPlayer == null || gameState.Players.Any(p => p.IsPlayerWinner))
+            throw new InvalidOperationException("A Player has already won the game.");
 
         GameHelper.ValidateTurn(gameState, playerId);
 
@@ -65,13 +65,13 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         if (!gameState.IsMultiplayer)
         {
             var aiAttackRequest = await IaHelper.GenerateIaAttackRequest(gameState);
-            var aiPlayer = gameState.Players.FirstOrDefault(p => p.PlayerId == "IA");
-            var aiBoats = aiPlayer?.PlayerBoats;
+            var player = gameState.Players.FirstOrDefault(p => p.PlayerId != "IA");
+            var playerBoats = player?.PlayerBoats;
 
-            if (aiBoats == null)
+            if (playerBoats == null)
                 throw new InvalidOperationException("AI player not found or has no boats.");
 
-            var (aiIsHit, aiIsSunk, updatedPlayerBoats) = AttackHelper.ProcessAttack(aiBoats, aiAttackRequest);
+            var (aiIsHit, aiIsSunk, updatedPlayerBoats) = AttackHelper.ProcessAttack(playerBoats, aiAttackRequest);
             var aiIsWinner = GameHelper.UpdateGameState(gameState, "IA", updatedPlayerBoats, gameRepository);
 
             var aiAttackRecord = new GameState.AttackRecord(aiAttackRequest, "IA", aiIsHit, aiIsSunk);
