@@ -38,10 +38,10 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
     GameHelper.ValidateTurn(gameState, playerId);
 
     var enemyBoats = GameHelper.GetPlayerBoats(gameState, playerId);
-    var (playerIsHit, playerIsSunk, updatedPlayerBoats) = AttackHelper.ProcessAttack(enemyBoats, attackRequest.AttackPosition);
+    var (playerIsHit, playerIsSunk, updatedEnemiesBoats) = AttackHelper.ProcessAttack(enemyBoats, attackRequest.AttackPosition);
 
     var playerAttackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, playerId, playerIsHit, playerIsSunk);
-    var playerIsWinner = GameHelper.UpdateGameState(gameState, playerId, updatedPlayerBoats, gameRepository);
+    var playerIsWinner = GameHelper.UpdateGameState(gameState, playerId, updatedEnemiesBoats, gameRepository);
 
     gameState.AttackHistory.Add(playerAttackRecord);
     gameRepository.UpdateGame(gameState);
@@ -59,7 +59,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         var aiAttackRequest = await IaHelper.GenerateIaAttackRequest(gameState);
         var playerBoats = GameHelper.GetPlayerBoats(gameState, "IA");
         
-        var (aiIsHit, aiIsSunk, _) = AttackHelper.ProcessAttack(playerBoats, aiAttackRequest);
+        var (aiIsHit, aiIsSunk, updatedPlayerBoats) = AttackHelper.ProcessAttack(playerBoats, aiAttackRequest);
         var aiIsWinner = GameHelper.UpdateGameState(gameState, "IA", updatedPlayerBoats, gameRepository);
 
         var aiAttackRecord = new GameState.AttackRecord(aiAttackRequest, "IA", aiIsHit, aiIsSunk);
