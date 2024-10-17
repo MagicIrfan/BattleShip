@@ -8,6 +8,7 @@
 <main>
     @if (GameService.gameId != null)
     {
+        <Historique/>
         <div class="grids">
             <PlayerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
             <ComputerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></ComputerGrid>

@@ -11,6 +11,7 @@ public interface IGameService
     List<Boat> boats { get; set; }
     Grid playerGrid { get; set; }
     Grid opponentGrid { get; set; }
+    List<string> historique { get; set; }
     Task StartGame();
     Task PlaceBoats();
     Task Attack(Position attackPosition);
@@ -24,6 +25,7 @@ public class GameService : IGameService
     public required List<Boat> boats { get; set; } = new List<Boat>();
     public required Grid playerGrid { get; set; }
     public required Grid opponentGrid { get; set; }
+    public required List<string> historique { get; set; }
     private Dictionary<Position, Boat> boatPositions = new Dictionary<Position, Boat>();
 
     private readonly IGameModalService _modalService;
@@ -108,14 +110,45 @@ public class GameService : IGameService
                 Console.WriteLine("Le joueur a gagné !");
             }
 
+			historique.Add($"Le joueur 1 a attaqué la position {attackResponse.PlayerAttackPosition.X}, {attackResponse.PlayerAttackPosition.Y}");
+			if (attackResponse.PlayerIsHit)
+			{
+				historique.Add($"Le joueur 1 a touché un bateau");
+			}
+			else
+			{
+				historique.Add($"Le joueur 1 s'est raté");
+			}
+
+			if (attackResponse.PlayerIsSunk)
+            {
+                historique.Add("Le joueur 1 a coulé un bateau !");
+            }
+
             UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit, playerGrid);
 
-            if (attackResponse.AiIsWinner)
+			historique.Add($"L'ordinateur a attaqué la position {attackResponse.AiAttackPosition.X}, {attackResponse.AiAttackPosition.Y}");
+            if (attackResponse.AiIsHit)
+            {
+				historique.Add($"L'ordinateur a touché un bateau !");
+			}
+            else
+            {
+				historique.Add($"L'ordinateur s'est raté");
+			}
+
+			if (attackResponse.AiIsSunk)
+			{
+				historique.Add("L'ordinateur a coulé un bateau !");
+			}
+
+			if (attackResponse.AiIsWinner)
             {
                 Console.WriteLine("L'ordinateur a gagné !");
             }
         }
-        else
+
+		else
         {
             throw new AttackException($"Error calling attack: {playerAttackResponse.StatusCode}", playerAttackResponse.StatusCode);
         }
