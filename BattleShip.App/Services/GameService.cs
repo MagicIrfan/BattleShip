@@ -13,6 +13,8 @@ public interface IGameService
     Task StartGame();
     Task PlaceBoats();
     Task Attack(Position attackPosition);
+    void PlaceBoat(List<Position> positions);
+    bool IsBoatAtPosition(Position position);
 }
 
 public class GameService : IGameService
@@ -80,8 +82,6 @@ public class GameService : IGameService
     public async Task Attack(Position attackPosition)
     {
         string json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
-        Console.WriteLine(gameId);
-        Console.WriteLine(json);
         var attackRequest = new AttackRequest(gameId ?? Guid.Empty, attackPosition);
         var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", attackRequest);
         if (playerAttackResponse.IsSuccessStatusCode)
@@ -90,26 +90,26 @@ public class GameService : IGameService
             Console.WriteLine(jsonString);
             using (JsonDocument doc = JsonDocument.Parse(jsonString))
             {
-                var playerAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
+                /*var playerAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
                 if ("Hit".Equals(playerAttackResult))
                 {
                     attackPosition.IsHit = true;
-                }
-                Console.WriteLine(playerAttackResult);
-                var computerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", new AttackRequest(gameId ?? Guid.Empty, null));
-                if (computerAttackResponse.IsSuccessStatusCode)
-                {
-                    var opponentAttackResult = doc.RootElement.GetProperty("playerAttackResult").GetString();
-                    if ("Hit".Equals(playerAttackResult))
-                    {
-                        attackPosition.IsHit = true;
-                    }
-                }
+                }*/
             }
         }
         else
         {
             throw new Exception($"Error calling startGame: {playerAttackResponse.StatusCode}");
         }
+    }
+
+    public void PlaceBoat(List<Position> positions)
+    {
+        boats.Add(new Boat(positions));
+    }
+
+    public bool IsBoatAtPosition(Position position)
+    {
+        return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
     }
 }
