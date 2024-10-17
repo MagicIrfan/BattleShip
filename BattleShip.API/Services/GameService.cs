@@ -9,7 +9,7 @@ namespace BattleShip.API.Services;
 
 public interface IGameService
 {
-    Task<(bool isHit, bool isSunk, bool isWinner, Position position)> ProcessAttack(AttackRequest attackRequest,
+    Task<object> ProcessAttack(AttackRequest attackRequest,
         IValidator<AttackRequest> validator);
 
     Task<IResult> RollbackTurn(Guid gameId);
@@ -22,36 +22,50 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
 {
     private HttpContext Context => httpContextAccessor.HttpContext!;
 
-    public async Task<(bool isHit, bool isSunk, bool isWinner, Position position)> ProcessAttack(AttackRequest attackRequest,
-        IValidator<AttackRequest> validator)
+    public async Task<object> ProcessAttack(AttackRequest attackRequest, IValidator<AttackRequest> validator)
+{
+    var playerId = Context.User.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                   ?? throw new UnauthorizedAccessException("User not recognized");
+
+    var validationResult = await validator.ValidateAsync(attackRequest);
+    if (!validationResult.IsValid)
+        throw new ValidationException("Invalid attack request", validationResult.Errors);
+
+    var gameState = gameRepository.GetGame(attackRequest.GameId)
+                    ?? throw new KeyNotFoundException("Game not found");
+
+    GameHelper.ValidateTurn(gameState, playerId);
+
+    var playerBoats = GameHelper.GetPlayerBoats(gameState, playerId);
+    var (playerIsHit, playerIsSunk, updatedPlayerBoats) = AttackHelper.ProcessAttack(playerBoats, attackRequest.AttackPosition);
+
+    var playerAttackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, playerId, playerIsHit, playerIsSunk);
+    var playerIsWinner = GameHelper.UpdateGameState(gameState, playerId, updatedPlayerBoats, gameRepository);
+
+    gameState.AttackHistory.Add(playerAttackRecord);
+    gameRepository.UpdateGame(gameState);
+
+    if (!gameState.IsMultiplayer)
     {
-        var playerId = Context.User.Claims
-                .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-                       ?? throw new UnauthorizedAccessException("User not recognized");
+        var aiAttackRequest = await IaHelper.GenerateIaAttackRequest(gameState);
+        var aiBoats = GameHelper.GetPlayerBoats(gameState, "IA");
+        
+        var (aiIsHit, aiIsSunk, _) = AttackHelper.ProcessAttack(aiBoats, aiAttackRequest);
+        
+        var aiAttackRecord = new GameState.AttackRecord(aiAttackRequest, "IA", aiIsHit, aiIsSunk);
+        gameState.AttackHistory.Add(aiAttackRecord);
+        
+        var aiIsWinner = GameHelper.UpdateGameState(gameState, "IA", updatedPlayerBoats, gameRepository);
 
-        var validationResult = await validator.ValidateAsync(attackRequest);
-        if (!validationResult.IsValid)
-            throw new ValidationException("Invalid attack request", validationResult.Errors);
-
-        var gameState = gameRepository.GetGame(attackRequest.GameId)
-                        ?? throw new KeyNotFoundException("Game not found");
-
-        GameHelper.ValidateTurn(gameState, playerId);
-
-        attackRequest.AttackPosition ??= await IaHelper.GenerateIaAttackRequest(gameState);
-        var ee = attackRequest.AttackPosition;
-
-        var boats = GameHelper.GetPlayerBoats(gameState, playerId);
-        var (isHit, isSunk, updatedBoats) = AttackHelper.ProcessAttack(boats, attackRequest.AttackPosition);
-
-        var attackRecord = new GameState.AttackRecord(attackRequest.AttackPosition, playerId, isHit, isSunk);
-        var isWinner = GameHelper.UpdateGameState(gameState, playerId, updatedBoats, gameRepository);
-
-        gameState.AttackHistory.Add(attackRecord);
         gameRepository.UpdateGame(gameState);
 
-        return (isHit, isSunk, isWinner, attackRequest.AttackPosition);
+        return (playerIsHit, playerIsSunk, playerIsWinner, aiIsHit, aiIsSunk, aiIsWinner, aiAttackRequest);
     }
+
+    return (playerIsHit, playerIsSunk, playerIsWinner, attackRequest.AttackPosition);
+}
+
 
     public Task<IResult> RollbackTurn(Guid gameId)
     {
