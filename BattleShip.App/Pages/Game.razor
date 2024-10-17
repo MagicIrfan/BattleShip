@@ -8,7 +8,12 @@
 <main>
     @if (GameService.gameId != null)
     {
-        <!--<Historique/>-->
+        <!--<div>
+            @foreach (var item in GameService.historique)
+            {
+                <p>@item</p>
+            }
+        </div>-->
         <div class="grids">
             <PlayerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
             <ComputerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></ComputerGrid>
