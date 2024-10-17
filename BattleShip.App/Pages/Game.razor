@@ -9,42 +9,8 @@
     @if (GameService.gameId != null)
     {
         <div class="grids">
-            <div class="grid">
-                @for (int row = 0; row < GameService.playerGrid.Positions.Length; row++)
-                {
-                    @for (int col = 0; col < GameService.playerGrid.Positions[0].Length; col++)
-                    {
-                        var currentRow = row;
-                        var currentCol = col;
-
-                        Position playerPosition = GameService.playerGrid.Positions[col][row];
-                        
-                        <button disabled="disabled" class="cell"
-                                style="background-color: @(GameService.GetCellColor(playerPosition))">
-                            @if (GameService.IsBoatAtPosition(playerPosition))
-                            {
-                                <span>@GameService.GetBoatSymbol(playerPosition)</span>
-                            }
-                        </button>
-                    }
-                }
-            </div>
-            <div class="grid">
-                @for (int row = 0; row < GameService.oponnentGrid.Positions.Length; row++)
-                {
-                    @for (int col = 0; col < GameService.oponnentGrid.Positions[0].Length; col++)
-                    {
-                        var currentRow = row;
-                        var currentCol = col;
-
-                        Position oponnentPosition = GameService.oponnentGrid.Positions[col][row];
-
-                        <button class="cell" @onclick="() => GameService.Attack(oponnentPosition)"
-                                style="background-color: @(GameService.GetCellColor(oponnentPosition))">
-                        </button>
-                    }
-                }
-            </div>
+            <PlayerGrid Positions="GameService.playerGrid.Positions"></PlayerGrid>
+            <ComputerGrid Positions="GameService.opponentGrid.Positions"></ComputerGrid>
         </div>
     }
     else
@@ -60,47 +26,9 @@
         justify-content: center;
         align-items: center;
     }
-
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(10, 1fr);
-        grid-template-rows: repeat(10, 1fr);
-        gap: 5px;
-        background-color: #dce7f1;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    }
-
-    .cell {
-        width: 40px;
-        height: 40px;
-        border: 1px solid #b0c4de;
-        border-radius: 4px;
-        position: relative;
-    }
-
-    .cell:not([disabled]):hover {
-        background-color: #7fc9ff;
-        transform: scale(1.05);
-    }
-
-    .cell:not([disabled]) {
-        cursor: pointer;
-        transition: transform 0.2s, background-color 0.2s;
-    }
-
-    .boat-symbol {
-        font-weight: bold;
-        color: darkblue;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
 </style>
 
-@code{
+@code {
     protected override async Task OnInitializedAsync()
     {
         await GameService.StartGame();

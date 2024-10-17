@@ -1,6 +1,4 @@
-﻿using BattleShip.Grpc;
-
-namespace BattleShip.Models;
+﻿namespace BattleShip.Models;
 
 public class Grid
 {
@@ -18,5 +16,4 @@ public class Grid
             }
         }
     }
-
 }
