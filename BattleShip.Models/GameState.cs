@@ -32,12 +32,5 @@ namespace BattleShip.Models
             public bool IsHit { get; set; } = isHit;
             public bool isSunk { get; set; } = isSunk;
         }
-        
-        public void AssignPlayer2(string player2Id)
-        {
-            PlayerTwoId = player2Id;
-        }
-
-        public bool IsFull() => PlayerTwoId != null;
     }
 }

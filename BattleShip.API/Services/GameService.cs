@@ -9,7 +9,7 @@ namespace BattleShip.API.Services;
 
 public interface IGameService
 {
-    Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest,
+    Task<(bool isHit, bool isSunk, bool isWinner, Position position)> ProcessAttack(AttackRequest attackRequest,
         IValidator<AttackRequest> validator);
 
     Task<IResult> RollbackTurn(Guid gameId);
@@ -22,7 +22,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
 {
     private HttpContext Context => httpContextAccessor.HttpContext!;
 
-    public async Task<(bool isHit, bool isSunk, bool isWinner)> ProcessAttack(AttackRequest attackRequest,
+    public async Task<(bool isHit, bool isSunk, bool isWinner, Position position)> ProcessAttack(AttackRequest attackRequest,
         IValidator<AttackRequest> validator)
     {
         var playerId = Context.User.Claims
@@ -39,6 +39,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         GameHelper.ValidateTurn(gameState, playerId);
 
         attackRequest.AttackPosition ??= await IaHelper.GenerateIaAttackRequest(gameState);
+        var ee = attackRequest.AttackPosition;
 
         var boats = GameHelper.GetPlayerBoats(gameState, playerId);
         var (isHit, isSunk, updatedBoats) = AttackHelper.ProcessAttack(boats, attackRequest.AttackPosition);
@@ -49,7 +50,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         gameState.AttackHistory.Add(attackRecord);
         gameRepository.UpdateGame(gameState);
 
-        return (isHit, isSunk, isWinner);
+        return (isHit, isSunk, isWinner, attackRequest.AttackPosition);
     }
 
     public Task<IResult> RollbackTurn(Guid gameId)
@@ -140,7 +141,6 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         {
             return Task.FromResult(Results.BadRequest(new { Errors = errorMessages }));
         }
-
         
         var playerId = Context.User.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;

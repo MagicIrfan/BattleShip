@@ -1,11 +1,12 @@
 ﻿@page "/multiplayer"
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
-@inject HubConnection HubConnection
+@inject HttpClient HttpClient
+@inject ITokenService TokenService
 
 <h3>Multiplayer BattleShip</h3>
 
-<div>
+<div class="game-setup">
     <label>Enter Game ID (or create new one):</label>
     <input @bind="gameIdInput" placeholder="Enter or generate a Game ID" />
     <button @onclick="JoinGame">Join Game</button>
@@ -13,52 +14,71 @@
 
 @if (gameId != Guid.Empty)
 {
-    <p>Connected to Game ID: @gameId</p>
+    <p>Connected to Game ID: <strong>@gameId</strong></p>
+    <button @onclick="LeaveGame" class="leave-button">Leave Game</button>
+}
 
-    <div>
-        <h4>Attack Coordinates</h4>
-        <input type="number" @bind="attackX" min="0" max="9" placeholder="X" />
-        <input type="number" @bind="attackY" min="0" max="9" placeholder="Y" />
-        <button @onclick="SendAttack">Send Attack</button>
-    </div>
-
-    <div>
-        <h4>Game Events</h4>
-        <ul>
-            @foreach (var eventMessage in eventMessages)
+@if (players.Count > 0)
+{
+    <div class="players-section">
+        <h4>Players in Game:</h4>
+        <div class="player-list">
+            @foreach (var player in players)
             {
-                <li>@eventMessage</li>
+                <div class="player-card">
+                    <div class="player-icon">
+                        @if (readyPlayers.Contains(player))
+                        {
+                            <span class="checkmark">✔️</span> <!-- Afficher une coche si le joueur est prêt -->
+                        }
+                        👤
+                    </div>
+                    <div class="player-id">@player</div>
+                </div>
             }
-        </ul>
+        </div>
     </div>
+
+    <button @onclick="SetReady" disabled="@(!IsReadyEnabled)" class="ready-button">
+        Prêt
+    </button>
 }
 
 @code {
     private string gameIdInput = string.Empty;
     private Guid gameId;
-    private string playerId = Guid.NewGuid().ToString();
-    private int attackX;
-    private int attackY;
-    private List<string> eventMessages = new();
+    private HubConnection HubConnection;
+    private List<string> players = [];
+    private string playerId = string.Empty;
+    private HashSet<string> readyPlayers = [];
+    private bool IsReadyEnabled => players.Count == 2;
 
     protected override async Task OnInitializedAsync()
     {
-        HubConnection.On<Guid, string, int, int>("ReceiveAttack", (gameId, attackerId, x, y) =>
+        var token = await TokenService.GetAccessTokenAsync();
+
+        HubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:5134/gamehub", options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult(token)!;
+            })
+            .Build();
+
+        HubConnection.On<List<string>>("UpdatePlayerList", (playerList) =>
         {
-            eventMessages.Add($"Player {attackerId} attacked at ({x}, {y}) in game {gameId}");
-            StateHasChanged();
+            players = playerList; 
+            StateHasChanged(); 
         });
-
-
-        HubConnection.On<Guid, object>("GameStateUpdated", (gameId, gameState) =>
+        
+        HubConnection.On<HashSet<string>>("UpdateReadyStatus", (readyPlayersList) =>
         {
-            eventMessages.Add("Game state updated.");
-            StateHasChanged();
+            readyPlayers = new HashSet<string>(readyPlayersList);
+            StateHasChanged(); // Mettre à jour l'interface utilisateur
         });
 
         await HubConnection.StartAsync();
     }
-
+    
     private async Task JoinGame()
     {
         if (Guid.TryParse(gameIdInput, out var parsedGameId))
@@ -67,18 +87,95 @@
         }
         else
         {
-            gameId = Guid.NewGuid();  // Créer une nouvelle partie si aucun GameId n'est fourni
+            gameId = Guid.NewGuid();
             gameIdInput = gameId.ToString();
         }
 
-        await HubConnection.SendAsync("JoinGame", gameId, playerId); // Envoi du playerId
-        eventMessages.Add($"Joined game with ID: {gameId}");
+        await HubConnection.SendAsync("JoinLobby", gameId);
+        players.Clear();
     }
 
-
-    private async Task SendAttack()
+    private async Task LeaveGame()
     {
-        await HubConnection.SendAsync("SendAttack", gameId, playerId, attackX, attackY);
-        eventMessages.Add($"You attacked at ({attackX}, {attackY})");
+        await HubConnection.SendAsync("LeaveGame", gameId);
+        gameId = Guid.Empty; 
+        players.Clear();
+        StateHasChanged();
+    }
+
+    private async Task SetReady()
+    {
+        await HubConnection.SendAsync("SetReady", gameId);
     }
 }
+
+<style>
+    .game-setup {
+        margin-bottom: 1em;
+    }
+
+    .players-section {
+        margin-top: 1em;
+    }
+
+    .player-list {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .player-card {
+        border: 1px solid #ccc;
+        padding: 1em;
+        margin: 0.5em;
+        text-align: center;
+        width: 120px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        position: relative;
+    }
+
+    .player-icon {
+        font-size: 2em;
+    }
+
+    .player-id {
+        margin-top: 0.5em;
+        font-weight: bold;
+    }
+
+    .leave-button {
+        background-color: #ff6b6b;
+        border: none;
+        color: white;
+        padding: 0.5em 1em;
+        font-size: 1em;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .ready-button {
+        display: block;
+        margin-top: 1em;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 0.5em 2em;
+        font-size: 1em;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .ready-button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .checkmark {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        font-size: 1.5em;
+        color: green; /* Ou une autre couleur que vous préférez */
+    }
+
+</style>

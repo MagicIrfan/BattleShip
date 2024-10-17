@@ -2,57 +2,38 @@
 using BattleShip.API.Services;
 using BattleShip.Models;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BattleShip.API;
 
-public class GameHub(IGameService gameService, IValidator<AttackRequest> validator, IValidator<Boat> boatValidator) : Hub
+[Authorize]
+public class GameHub(IMultiplayerService multiplayerService, IValidator<AttackRequest> validator, IValidator<Boat> boatValidator, IGameRepository gameRepository) : Hub
 {
-    private static readonly Dictionary<Guid, GameState> Games = new();
-    
-    public async Task JoinGame(Guid gameId)
+    private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
+
+    public async Task JoinLobby(Guid gameId)
     {
-        var playerId = Context.User?.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(playerId))
-            throw new UnauthorizedAccessException("User not recognized");
-        
-        if (!Games.TryGetValue(gameId, out var multiplayerGame))
-        {
-            var gameState = new GameState(
-                gameId: gameId,
-                playerOneBoats: [],
-                playerTwoBoats: [], 
-                isPlayerOneWinner: false,
-                isPlayerTwoWinner: false,
-                playerOneId: playerId,
-                playerTwoId: "",
-                difficulty: 0
-            )
-            {
-                IsMultiplayer = true
-            };
-
-            Games[gameId] = gameState;
-        }
-        else
-        {
-            if (!multiplayerGame.IsFull())
-                multiplayerGame.AssignPlayer2(playerId);
-            else 
-                await Clients.Client(Context.ConnectionId).SendAsync("Game is full");
-        }
-
-        await Groups.AddToGroupAsync(Context.ConnectionId, gameId.ToString());
-
-        if (multiplayerGame != null && multiplayerGame.IsFull())
-        {
-            await Clients.Group(gameId.ToString()).SendAsync("InitializeGame");
-        }
+        await multiplayerService.JoinLobby(gameId, Context);
     }
 
-    public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId)
+    public async Task SetReady(Guid gameId)
+    {
+        await multiplayerService.SetReady(gameId, Context);
+    }
+    
+    public async Task LeaveGame(Guid gameId)
+    {
+        await multiplayerService.LeaveGame(gameId, Context);
+    }
+    
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await multiplayerService.OnDisconnectedAsync(exception, Context);
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    /*public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId)
     {
         var playerId = Context.User?.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -90,12 +71,5 @@ public class GameHub(IGameService gameService, IValidator<AttackRequest> validat
         {
             await Clients.Group(gameId.ToString()).SendAsync("GameOver", attackerId);
         }
-    }
-
-    public async Task LeaveGame(Guid gameId, string playerId)
-    {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, gameId.ToString());
-        Games.Remove(gameId);
-        await Clients.Group(gameId.ToString()).SendAsync("PlayerLeft", playerId);
-    }
+    }*/
 }

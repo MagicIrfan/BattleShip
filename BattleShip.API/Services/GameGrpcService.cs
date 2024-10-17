@@ -30,13 +30,21 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.AttackR
             GameId = Guid.Parse(request.GameId)
         };
         
-        var (isHit, isSunk, isWinner) = await gameService.ProcessAttack(modelRequest, attackRequestValidator);
+        var (isHit, isSunk, isWinner, position) = await gameService.ProcessAttack(modelRequest, attackRequestValidator);
+
+        var grpcPosition = new Position
+        {
+            X = position.X,
+            Y = position.Y,
+            IsHit = position.IsHit
+        };
 
         return new AttackResponse 
         {
             IsHit = isHit,
             IsSunk = isSunk,
-            IsWinner = isWinner
+            IsWinner = isWinner,
+            Position = grpcPosition,
         };
     }
 

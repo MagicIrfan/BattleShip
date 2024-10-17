@@ -51,6 +51,7 @@ message AttackResponse {
   bool isHit = 1;
   bool isSunk = 2;
   bool isWinner = 3;
+  Position position = 4;
 }
 
 message Boat {

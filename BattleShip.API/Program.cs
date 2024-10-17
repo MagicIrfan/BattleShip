@@ -14,6 +14,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddGrpc();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<IMultiplayerService, MultiplayerService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 builder.Services.AddSingleton<IGameRepository, GameRepository>();
@@ -55,6 +56,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseRouting();
 
 app.UseGrpcWeb();
 app.UseAuthentication();
@@ -122,11 +125,12 @@ gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackRequest 
 {
     try
     {
-        var (isHit, isSunk, isWinner) = await gameService.ProcessAttack(attackRequest, validator);
+        var (isHit, isSunk, isWinner, position) = await gameService.ProcessAttack(attackRequest, validator);
         return Results.Ok(new
         {
             PlayerAttackResult = isHit ? (isSunk ? "Sunk" : "Hit") : "Miss",
-            IsPlayerWinner = isWinner
+            IsPlayerWinner = isWinner,
+            Position = position
         });
     }
     catch (ValidationException ex)
