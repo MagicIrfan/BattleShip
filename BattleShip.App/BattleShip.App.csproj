@@ -34,5 +34,13 @@
 	<ItemGroup>
 		<Protobuf Include="Protos\game.proto" GrpcServices="Client" />
 	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="wwwroot\Public\189001.png" />
+	  <None Include="wwwroot\Public\gyarados-f.png" />
+	  <None Include="wwwroot\Public\sharpedo.png" />
+	  <None Include="wwwroot\Public\wailord.png" />
+	  <None Include="wwwroot\Public\whiscash.png" />
+	</ItemGroup>
 	
 	</Project>
