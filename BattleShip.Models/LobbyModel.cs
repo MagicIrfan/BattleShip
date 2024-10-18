@@ -1,12 +1,13 @@
 ﻿namespace BattleShip.Models;
 
-public class LobbyModel(Guid gameId)
+public class LobbyModel(Guid gameId, bool isPrivate)
 {
     public Guid GameId { get; set; } = gameId;
     public string? PlayerOneId { get; set; }
     public string? PlayerTwoId { get; set; }
     public bool PlayerOneReady { get; set; }
     public bool PlayerTwoReady { get; set; }
+    public bool IsPrivate { get; set; } = isPrivate;
     
     private Dictionary<string, PlayerInfo> PlayerInfo { get; } = new();
     

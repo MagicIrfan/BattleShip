@@ -1,4 +1,5 @@
 ﻿using BattleShip.API.Services;
+using BattleShip.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,6 +11,11 @@ public class GameHub(IMultiplayerService multiplayerService) : Hub
     public async Task JoinLobby(Guid gameId, string username, string picture)
     {
         await multiplayerService.JoinLobby(gameId, username, picture, Context);
+    }
+
+    public async Task CreateLobby(Guid gameId, string username, string picture, bool isPrivate)
+    {
+        await multiplayerService.CreateLobby(gameId, username, picture, isPrivate, Context);
     }
 
     public async Task SetReady(Guid gameId)
@@ -28,43 +34,13 @@ public class GameHub(IMultiplayerService multiplayerService) : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    /*public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId)
+    public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId)
     {
-        var playerId = Context.User?.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-
-        
-        if (string.IsNullOrEmpty(playerId))
-            throw new UnauthorizedAccessException("User not recognized");
-        
-        await gameService.PlaceBoats(playerBoats, gameId, boatValidator);
-        await Clients.Group(gameId.ToString()).SendAsync("Boat placed", playerId);
+        await multiplayerService.PlaceBoat(playerBoats, gameId, Context);
     }
 
     public async Task SendAttack(Guid gameId, int x, int y)
     {
-        var attackerId = Context.User?.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(attackerId))
-            throw new UnauthorizedAccessException("User not recognized");
-
-        var attackRequest = new AttackRequest(gameId, new Position(x, y));
-
-        var (isHit, isSunk, isWinner) = await gameService.ProcessAttack(attackRequest, validator);
-
-        await Clients.Group(gameId.ToString()).SendAsync("AttackResult", new 
-        {
-            AttackerId = attackerId,
-            IsHit = isHit,
-            IsSunk = isSunk,
-            IsWinner = isWinner,
-            Position = attackRequest.AttackPosition
-        });
-
-        if (isWinner)
-        {
-            await Clients.Group(gameId.ToString()).SendAsync("GameOver", attackerId);
-        }
-    }*/
+        await multiplayerService.SendAttack(gameId, x, y, Context);
+    }
 }
