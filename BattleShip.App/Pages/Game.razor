@@ -1,6 +1,7 @@
 ﻿@page "/game"
 @inject IGameService GameService
 @inject IJSRuntime JsRuntime
+@inject IModalService Modal
 @attribute [Authorize]
 
 <PageTitle>BattleShip</PageTitle>
@@ -8,15 +9,18 @@
 <main>
     @if (GameService.gameId != null)
     {
-        <!--<div>
-            @foreach (var item in GameService.historique)
-            {
-                <p>@item</p>
-            }
-        </div>-->
+        <button @click="OnRollback">Rollback</button>
         <div class="grids">
-            <PlayerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
-            <ComputerGrid IsPlacingBoats="isPlacingBoats" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></ComputerGrid>
+            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
+
+            <div class="historique-container">
+                @foreach (var item in GameService.historique)
+                {
+                    <p>@item</p>
+                }
+            </div>
+
+            <ComputerGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></ComputerGrid>
         </div>
     }
     else
@@ -28,28 +32,69 @@
 <style>
     .grids {
         display: flex;
+        flex-grow: 1;
+        overflow: hidden;
+        position: relative;
         gap: 50px;
         justify-content: center;
-        align-items: center;
+        align-items: stretch;
+        max-height:480px;
     }
+
+    .historique-container {
+        text-align:center;
+        background-color: #f9f9f9;
+        border: 1px solid #d1d1d1;
+        border-radius: 10px;
+        padding: 20px;
+        overflow-y: auto; 
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column; 
+        width:320px;
+    }
+
+        .historique-container h2 {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #444;
+            font-weight: bold;
+        }
+
+        .historique-container p {
+            font-size: 0.9em;
+            margin: 8px 0;
+            line-height: 1.5;
+            color: #555;
+            padding: 8px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+            .historique-container p:hover {
+                background-color: #e6f7ff;
+            }
 </style>
 
 @code {
-    bool isPlacingBoats = true;
     private void TogglePlacingBoats()
     {
-        isPlacingBoats = !isPlacingBoats;
+        GameService.IsPlacingBoat = !GameService.IsPlacingBoat;
     }
 
     private async Task HandleAttack(Position position)
     {
         await GameService.Attack(position);
-
-        StateHasChanged(); 
+        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
     {
         await GameService.StartGame();
+    }
+
+    private async Task OnRollback()
+    {
+        
     }
 }
