@@ -13,7 +13,7 @@ public class HttpService : IHttpService
 {
     private readonly ITokenService _tokenService;
     private readonly HttpClient _httpClient;
-    private static readonly string BASE_API_URL = "https://localhost:5134/api/game";
+    private static readonly string BASE_API_URL = "https://localhost:5134/api";
 
     public HttpService(ITokenService tokenService, HttpClient httpClient)
     {

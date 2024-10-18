@@ -1,38 +1,57 @@
 ﻿@page "/"
-@inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUserService UserService
+@inject IGameModalService GameModalService
 @using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>BattleShip</PageTitle>
 
 <main>
     <header>
-        <h1 id="title">Bataille Navale</h1>
+        <div class="header-content">
+            <div class="container-center">
+                <h1 id="title">Bataille Navale</h1>
+                <div class="buttons">
+                    @if (isUserAuthenticated)
+                    {
+                        <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
+                        <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
+                        <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
+                    }
+                    else
+                    {
+                        <button role="button" @onclick="NavigateToLogin">Se connecter</button>
+                    }
+                </div>
+            </div>
+
+            @if (isUserAuthenticated && user != null)
+            {
+                <div class="profile">
+                    <div class="profile-details">
+                        <img src="@user.Profile" alt="Profile Picture" class="profile-image" />
+                        <p>@user.Name</p>
+                    </div>
+                </div>
+            }
+        </div>
     </header>
-    <div class="buttons">
-        @if (isUserAuthenticated)
-        {
-            <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
-            <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
-            <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
-        }
-        else
-        {
-            <button role="button" @onclick="NavigateToLogin">Se connecter</button>
-        }
-        <button role="button" @onclick="CloseGame">Quitter</button>
-    </div>
 </main>
 
 @code {
     private bool isUserAuthenticated;
+    public User user;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         isUserAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+        if (isUserAuthenticated)
+        {
+            user = await UserService.LoadPlayerProfile();
+        }
     }
 
     private void NavigateToLogin()
@@ -42,75 +61,108 @@
 
     private void ShowLeaderboard()
     {
-        Navigation.NavigateTo("/authentication/login");
+        Navigation.NavigateTo("/leaderboard");
     }
 
-    private void PlayGameSingle()
+    private async Task PlayGameSingle()
     {
-        Navigation.NavigateTo("/game");
+        await GameModalService.ShowModal<ChooseDifficultyModal>("Choisir une difficulté", "Choisir une difficulté");
     }
 
     private void PlayGameMultiplayer()
     {
         Navigation.NavigateTo("/multiplayer");
     }
-
-    private async Task CloseGame()
-    {
-        await JS.InvokeVoidAsync("closeTab");
-    }
 }
 
-
 <style>
-    header{
-        margin-bottom:12em;
+    header {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    .container-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex-grow: 1;
     }
 
     #title {
         font-size: 4em;
-        text-align: center;
         color: white;
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); 
-        font-style:italic;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+        font-style: italic;
+        margin-bottom: 40px;
+    }
+
+    p{
+        font-size: 1em;
+        color: white;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+        font-weight:bold;
     }
 
     .buttons {
         display: flex;
-        flex-direction: column; 
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 20px; 
+        gap: 20px;
     }
 
     button {
-        background-color: #7fc9ff; 
-        border: none; 
-        border-radius: 30px; 
-        color: #003366; 
+        background-color: #7fc9ff;
+        border: none;
+        border-radius: 30px;
+        color: #003366;
         cursor: pointer;
-        font-size: 20px; 
+        font-size: 20px;
         font-weight: 600;
-        padding: 15px 30px; 
-        width:16em;
-        transition: transform 0.3s ease, background-color 0.3s ease; 
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); 
+        padding: 15px 30px;
+        width: 16em;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
 
-    button:hover {
-        transform: scale(1.1); 
-        background-color: #66b3ff; 
+        button:hover {
+            transform: scale(1.1);
+            background-color: #66b3ff;
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+    .profile {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-left: auto; /* Pousse le profil à l'extrême droite */
     }
 
-    button:focus {
-        outline: none;
+    .profile-details {
+        display: flex;
+        align-items: center;
+        flex-direction:column;
+        justify-content:center;
+        gap: 10px;
+    }
+
+    .profile-image {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
     }
 </style>
-
-<script>
-    window.closeTab = function () {
-        window.close(); 
-    }
-</script>
-
-

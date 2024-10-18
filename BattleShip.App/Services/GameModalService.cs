@@ -1,12 +1,13 @@
 ﻿using BattleShip.Components;
 using Blazored.Modal;
 using Blazored.Modal.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace BattleShip.Services;
 
 public interface IGameModalService
 {
-    Task<string?> ShowModal(string title, string message);
+    Task<string?> ShowModal<T>(string title, string message) where T : ComponentBase;
 }
 
 public class GameModalService : IGameModalService
@@ -18,7 +19,7 @@ public class GameModalService : IGameModalService
         _modalService = modalService;
     }
 
-    public async Task<string?> ShowModal(string title, string message)
+    public async Task<string?> ShowModal<T>(string title, string message) where T : ComponentBase
     {
         var parameters = new ModalParameters();
         parameters.Add("Title", title);
@@ -31,7 +32,7 @@ public class GameModalService : IGameModalService
         };
 
 
-        var modal = _modalService.Show<GameModal>("Fin du jeu", parameters, options);
+        var modal = _modalService.Show<T>(parameters, options);
         var result = await modal.Result;
 
         return result?.Data?.ToString();
