@@ -1,17 +1,12 @@
-﻿using System.Security.Claims;
-using BattleShip.API.Services;
-using BattleShip.Models;
-using FluentValidation;
+﻿using BattleShip.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BattleShip.API;
 
 [Authorize]
-public class GameHub(IMultiplayerService multiplayerService, IValidator<AttackModel.AttackRequest> validator, IValidator<Boat> boatValidator, IGameRepository gameRepository) : Hub
+public class GameHub(IMultiplayerService multiplayerService) : Hub
 {
-    private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
-
     public async Task JoinLobby(Guid gameId, string username, string picture)
     {
         await multiplayerService.JoinLobby(gameId, username, picture, Context);
