@@ -15,12 +15,12 @@ public class LobbyModel(Guid gameId)
         var playerInfo = new PlayerInfo()
         {
             Username = username,
-            Picture = profilePicture
+            Picture = profilePicture,
+            Id = playerId
         };
         
         if (string.IsNullOrEmpty(PlayerOneId))
         {
-            
             PlayerOneId = playerId;
             PlayerInfo[playerId] = playerInfo;
         }

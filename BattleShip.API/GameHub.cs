@@ -29,7 +29,7 @@ public class GameHub(IMultiplayerService multiplayerService, IValidator<AttackMo
     
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        await multiplayerService.OnDisconnectedAsync(exception, Context);
+        await multiplayerService.OnDisconnectedAsync(Context);
         await base.OnDisconnectedAsync(exception);
     }
 

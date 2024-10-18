@@ -32,7 +32,7 @@
             {
                 <div class="player-card">
                     <div class="player-icon">
-                        @if (_readyPlayers.Contains(player.Username))
+                        @if (_readyPlayers.Contains(player.Id))
                         {
                             <span class="checkmark">✔️</span>
                         }
@@ -136,6 +136,7 @@
         await HubConnection.SendAsync("LeaveGame", _gameId);
         _gameId = Guid.Empty; 
         _playerProfiles.Clear();
+        _readyPlayers.Clear();
         _message = string.Empty;
         StateHasChanged();
     }

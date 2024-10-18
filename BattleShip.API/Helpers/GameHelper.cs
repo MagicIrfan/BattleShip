@@ -120,4 +120,20 @@ public static class GameHelper
 
         return boats;
     }
+    
+    public static GameState.AttackRecord? RollbackLastAttack(GameState gameState)
+    {
+        if (gameState.AttackHistory.Count == 0)
+            return null;
+
+        var lastAttack = gameState.AttackHistory.Last();
+        gameState.AttackHistory.RemoveAt(gameState.AttackHistory.Count - 1);
+
+        var player = gameState.Players.FirstOrDefault(p => p.PlayerId == lastAttack.PlayerId);
+        if (player == null)
+            return null;
+
+        AttackHelper.UndoLastAttack(player.PlayerBoats, lastAttack);
+        return lastAttack;
+    }
 }

@@ -2,8 +2,6 @@
 using BattleShip.API.Helpers;
 using BattleShip.Models;
 using FluentValidation;
-using FluentValidation.Results;
-using Microsoft.IdentityModel.Tokens;
 
 namespace BattleShip.API.Services;
 
@@ -31,8 +29,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         var gameState = gameRepository.GetGame(attackRequest.GameId)
             ?? throw new KeyNotFoundException("Game not found");
         
-        var attackRequestValidator = new AttackModel.AttackRequestValidator(gameState.GridSize);
-        var validationResult = await attackRequestValidator.ValidateAsync(attackRequest);
+        var validationResult = await validator.ValidateAsync(attackRequest);
         if (!validationResult.IsValid)
             throw new ValidationException("Invalid attack request", validationResult.Errors);
 
@@ -91,7 +88,6 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
     public Task<IResult> RollbackTurn(Guid gameId)
     {
         var gameState = gameRepository.GetGame(gameId);
-
         if (gameState == null)
             return Task.FromResult(Results.NotFound("Game not found"));
 
@@ -101,33 +97,35 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         if (gameState.Players.Any(player => player.IsPlayerWinner))
             return Task.FromResult(Results.BadRequest("A player has already won the game. Rollback is not allowed."));
 
-        if (gameState.AttackHistory.Count == 0)
+        if (!gameState.AttackHistory.Any())
             return Task.FromResult(Results.BadRequest("No moves to rollback"));
 
-        var playerId = Context.User.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-
+        var playerId = Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
 
-        var lastAttack = gameState.AttackHistory.Last();
-        gameState.AttackHistory.RemoveAt(gameState.AttackHistory.Count - 1);
+        // Rollback IA attack
+        var lastIaAttack = GameHelper.RollbackLastAttack(gameState);
+        if (lastIaAttack == null)
+            return Task.FromResult(Results.BadRequest("Invalid attack history"));
 
-        var player = gameState.Players.FirstOrDefault(p => p.PlayerId.Equals(lastAttack.PlayerId));
-        if (player == null)
-            return Task.FromResult(Results.BadRequest("Non-existent player."));
-
-        AttackHelper.UndoLastAttack(player.PlayerBoats, lastAttack);
+        // Rollback Player attack
+        var lastPlayerAttack = GameHelper.RollbackLastAttack(gameState);
+        if (lastPlayerAttack == null)
+            return Task.FromResult(Results.BadRequest("Invalid attack history"));
 
         gameRepository.UpdateGame(gameState);
 
         return Task.FromResult(Results.Ok(new
         {
             gameState.GameId,
+            LastIaAttackPosition = lastIaAttack.AttackPosition,
+            LastPlayerAttackPosition = lastPlayerAttack.AttackPosition,
             Message = "Last move rolled back successfully."
         }));
-    }
 
+    }
+    
     public async Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator)
     {
         var validationResult = await validator.ValidateAsync(request);

@@ -9,7 +9,7 @@ public interface IMultiplayerService
     Task JoinLobby(Guid gameId, string username, string picture, HubCallerContext context);
     Task SetReady(Guid gameId, HubCallerContext context);
     Task LeaveGame(Guid gameId, HubCallerContext context);
-    Task OnDisconnectedAsync(Exception? exception, HubCallerContext context);
+    Task OnDisconnectedAsync(HubCallerContext context);
 }
 
 public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository) : IMultiplayerService
@@ -143,7 +143,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
     }
 
     
-    public async Task OnDisconnectedAsync(Exception? exception, HubCallerContext context)
+    public async Task OnDisconnectedAsync(HubCallerContext context)
     {
         var playerId = context.User?.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -155,7 +155,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         {
             if (Lobbies.TryGetValue(gameId, out var lobby))
             {
-                /*if (lobby.GetPlayerList().Contains(playerId))
+                if (lobby.GetPlayerList().Any(p => p.Id == playerId))
                 {
                     await gameHub.Groups.RemoveFromGroupAsync(context.ConnectionId, gameId.ToString());
 
@@ -169,7 +169,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
                         Lobbies.Remove(gameId);
                     }
                     break;
-                }*/
+                }
             }
         }
     }

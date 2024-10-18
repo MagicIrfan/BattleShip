@@ -1,5 +1,6 @@
 using BattleShip.API;
 using BattleShip.API.Services;
+using BattleShip.API.Validator;
 using BattleShip.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,7 +19,7 @@ builder.Services.AddScoped<IMultiplayerService, MultiplayerService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 builder.Services.AddSingleton<IGameRepository, GameRepository>();
-builder.Services.AddValidatorsFromAssemblyContaining<AttackModel.AttackRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<AttackRequestValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<StartGameRequestValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<BoatValidator>();
 
