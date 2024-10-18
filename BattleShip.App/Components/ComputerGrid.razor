@@ -1,6 +1,7 @@
 ﻿@inject IGameService GameService
+@inject IJSRuntime JS
 
-<div class="grid">
+<div class="grid" style="--grid-size: @(PositionsData.Length)">
     @for (int row = 0; row < PositionsData.Length; row++)
     {
         @for (int col = 0; col < PositionsData[0].Length; col++)
@@ -29,8 +30,8 @@
 <style>
     .grid {
         display: grid;
-        grid-template-columns: repeat(10, 1fr);
-        grid-template-rows: repeat(10, 1fr);
+        grid-template-columns: repeat(var(--grid-size), 1fr);
+        grid-template-rows: repeat(var(--grid-size), 1fr);
         gap: 5px;
         background-color: #dce7f1;
         padding: 10px;

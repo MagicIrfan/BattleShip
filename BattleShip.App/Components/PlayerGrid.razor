@@ -2,7 +2,7 @@
 @inject IJSRuntime JsRuntime
 @inject IGameEventService GameEventService
 
-<div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef">
+<div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef" style="--grid-size: @(PositionsData.Length)">
     @foreach (var row in Enumerable.Range(0, PositionsData.Length))
     {
         @foreach (var col in Enumerable.Range(0, PositionsData[0].Length))
@@ -31,7 +31,6 @@
 
     private bool isVertical = false;
     private int indexBoat = 0;
-    private int gridSize = 10;
     private IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
     private int mouseRow = -1;
     private int mouseCol = -1;
@@ -52,7 +51,6 @@
     {
         isVertical = false;
         indexBoat = 0;
-        gridSize = 10;
         sizes = new List<int> { 2, 3, 3, 4, 5 };
         mouseRow = -1;
         mouseCol = -1;
@@ -89,8 +87,8 @@
         int relativeX = (int)(e.ClientX - gridX);
         int relativeY = (int)(e.ClientY - gridY);
 
-        mouseRow = (relativeY < 0 || relativeY / cellSize >= gridSize) ? -1 : relativeY / cellSize;
-        mouseCol = (relativeX < 0 || relativeX / cellSize >= gridSize) ? -1 : relativeX / cellSize;
+        mouseRow = (relativeY < 0 || relativeY / cellSize >= PositionsData.Length) ? -1 : relativeY / cellSize;
+        mouseCol = (relativeX < 0 || relativeX / cellSize >= PositionsData.Length) ? -1 : relativeX / cellSize;
     }
 
     public async Task OnMouseMoveHandler(MouseEventArgs e) => await PlaceBoat(e);
@@ -163,8 +161,8 @@
         (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
 
     private bool CanPlaceBoat() =>
-        isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < gridSize :
-                     mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < gridSize;
+        isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < PositionsData.Length :
+                     mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < PositionsData.Length;
 
     private void TogglePlacingBoats() => OnTogglePlacingBoats.InvokeAsync();
 
@@ -192,8 +190,8 @@
 <style>
     .grid {
         display: grid;
-        grid-template-columns: repeat(10, 1fr);
-        grid-template-rows: repeat(10, 1fr);
+        grid-template-columns: repeat(var(--grid-size), 1fr);
+        grid-template-rows: repeat(var(--grid-size), 1fr);
         gap: 5px;
         background-color: #dce7f1;
         padding: 10px;

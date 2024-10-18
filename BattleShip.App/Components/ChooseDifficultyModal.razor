@@ -1,0 +1,122 @@
+﻿@inject NavigationManager Navigation
+@inject IGameService GameService
+
+<div class="modal-content">
+    <h1>@Title</h1>
+    <p>@Message</p>
+
+    <div class="modal-fields">
+        <label for="gridSize">Taille de la grille (10-20) :</label>
+        <input type="number" id="gridSize" min="10" max="20" @bind="GridSize" />
+
+        <label for="difficulty">Niveau de difficulté :</label>
+        <select id="difficulty" @bind="DifficultyLevel">
+            <option value="1">Facile</option>
+            <option value="2">Moyen</option>
+            <option value="2">Difficle</option>
+        </select>
+    </div>
+
+    <div class="modal-buttons">
+        <button @onclick="HandleSubmit">Soumettre</button>
+        <button @onclick="HandleClear">Annuler</button>
+    </div>
+</div>
+
+<style>
+    .modal-content {
+        background-color: #f9f9f9;
+        max-width: 500px;
+        margin: auto;
+        text-align: center;
+        padding: 20px;
+        border-radius: 30px;
+    }
+
+        .modal-content h1 {
+            color: #003366;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #555;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+    .modal-fields {
+        margin-bottom: 20px;
+        text-align: left; 
+    }
+
+        .modal-fields label {
+            display: block; 
+            margin-bottom: 5px;
+            color: #003366;
+        }
+
+        .modal-fields input,
+        .modal-fields select {
+            width: 100%; 
+            padding: 10px; 
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px; 
+        }
+
+    .modal-content button {
+        background-color: #7fc9ff;
+        border: none;
+        border-radius: 30px;
+        color: #003366;
+        cursor: pointer;
+        font-size: 16px;
+        width: 12em;
+        font-weight: bold;
+        padding: 15px 20px;
+        margin: 0 10px;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+        .modal-content button:hover {
+            transform: scale(1.1);
+            background-color: #66b3ff;
+        }
+
+        .modal-content button:focus {
+            outline: none;
+        }
+
+    .modal-content .modal-buttons {
+        margin-top: 2.5em;
+        margin-bottom: 1.25em;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; }
+
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public string Message { get; set; }
+
+    private int GridSize { get; set; } = 10; 
+    private int DifficultyLevel { get; set; } = 1;
+
+    private void HandleSubmit()
+    {
+        GameService.gameParameter.DifficultyLevel = DifficultyLevel;
+        GameService.gameParameter.GridSize = GridSize;
+        Console.WriteLine($"Grid Size: {GridSize}, Difficulty Level: {DifficultyLevel}");
+        ModalInstance.CloseAsync();
+        Navigation.NavigateTo("/game");
+    }
+    private void HandleClear()
+    {
+        ModalInstance.CancelAsync();
+    }
+}

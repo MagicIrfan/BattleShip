@@ -1,4 +1,5 @@
-﻿using BattleShip.Exceptions;
+﻿using BattleShip.Components;
+using BattleShip.Exceptions;
 using BattleShip.Models;
 using Blazored.Modal.Services;
 using Microsoft.AspNetCore.Components;
@@ -14,6 +15,7 @@ public interface IGameService
     Grid opponentGrid { get; set; }
     List<string> historique { get; set; }
     bool IsPlacingBoat { get; set; }
+    GameParameter gameParameter { get; set; }
     Task StartGame();
     Task PlaceBoats();
     Task Attack(Position attackPosition);
@@ -31,6 +33,7 @@ public class GameService : IGameService
     public required Grid opponentGrid { get; set; }
     public required List<string> historique { get; set; } = new List<string>();
     public required bool IsPlacingBoat { get; set; } = true;
+    public required GameParameter gameParameter { get; set; } = new GameParameter();
 
     private readonly IGameModalService _modalService;
     private readonly NavigationManager _navManager;
@@ -49,8 +52,8 @@ public class GameService : IGameService
 
     public async Task StartGame()
     {
-        var startGameRequest = new StartGameRequest(10, 2);
-        var response = await _httpService.SendHttpRequestAsync(HttpMethod.Post, "/startGame", startGameRequest);
+        var startGameRequest = new StartGameRequest(gameParameter.GridSize, gameParameter.DifficultyLevel);
+        var response = await _httpService.SendHttpRequestAsync(HttpMethod.Post, "/game/startGame", startGameRequest);
 
         if (response.IsSuccessStatusCode)
         {
@@ -63,8 +66,8 @@ public class GameService : IGameService
                 if (result != null)
                 {
                     gameId = Guid.Parse(result);
-                    playerGrid = new Grid(10, 10);
-                    opponentGrid = new Grid(10, 10);
+                    playerGrid = new Grid(gameParameter.GridSize, gameParameter.GridSize);
+                    opponentGrid = new Grid(gameParameter.GridSize, gameParameter.GridSize);
                     boats = new List<Boat>();
                     historique = new List<string>();
                     IsPlacingBoat = true;
@@ -79,7 +82,7 @@ public class GameService : IGameService
 
     public async Task PlaceBoats()
     {
-        var response = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/placeBoats?gameId={gameId}", boats);
+        var response = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/game/placeBoats?gameId={gameId}", boats);
         if (response.IsSuccessStatusCode)
         {
             Console.WriteLine("Les bateaux sont placés !");
@@ -94,7 +97,7 @@ public class GameService : IGameService
     {
         var json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
         var attackRequest = new AttackModel.AttackRequest(gameId ?? Guid.Empty, attackPosition);
-        var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/attack?gameId={gameId}", attackRequest);
+        var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/game/attack?gameId={gameId}", attackRequest);
 
         if (playerAttackResponse.IsSuccessStatusCode)
         {
@@ -117,7 +120,7 @@ public class GameService : IGameService
             if (attackResponse.PlayerIsWinner)
             {
                 Console.WriteLine("Le joueur a gagné !");
-                var result = await _modalService.ShowModal("Gagné", "Vous avez gagné la partie");
+                var result = await _modalService.ShowModal<GameModal>("Gagné", "Vous avez gagné la partie");
                 if (result == "restart")
                 {
                     _eventService.RaiseGameRestarted();
@@ -141,7 +144,7 @@ public class GameService : IGameService
             if (attackResponse.AiIsWinner)
             {
                 Console.WriteLine("L'ordinateur a gagné !");
-                var result = await _modalService.ShowModal("Perdu", "Vous avez perdu la partie");
+                var result = await _modalService.ShowModal<GameModal>("Perdu", "Vous avez perdu la partie");
                 if (result == "restart")
                 {
                     _eventService.RaiseGameRestarted();
@@ -192,7 +195,7 @@ public class GameService : IGameService
     public async Task<Dictionary<string, int>> GetLeaderboard()
     {
         // Envoyer la requête HTTP pour récupérer le leaderboard
-        var leaderboardResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Get, "/leaderboard");
+        var leaderboardResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Get, "/game/leaderboard");
 
         // Lire le contenu de la réponse
         var leaderboardContent = await leaderboardResponse.Content.ReadAsStringAsync();
@@ -208,7 +211,7 @@ public class GameService : IGameService
 
     public async Task Rollback()
     {
-        var rollbackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/rollback?gameId={gameId}");
+        var rollbackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/game/rollback?gameId={gameId}");
         var rollbackContent = await rollbackResponse.Content.ReadAsStringAsync();
         var rollback = JsonSerializer.Deserialize<RollbackResponse>(rollbackContent, new JsonSerializerOptions
         {
