@@ -39,7 +39,6 @@ public class GameUIService : IGameUIService
         if (result == "restart")
         {
             _eventService.RaiseGameRestarted();
-            // Restart logic here
         }
         else if (result == "return")
         {

@@ -30,7 +30,9 @@ public class GameLogicService : IGameLogicService
 
     public async Task StartGame()
     {
-        var gameId = await _apiService.StartGameAsync();
+        int gridSize = _stateService.GameParameter.GridSize;
+        int difficulty = _stateService.GameParameter.DifficultyLevel;
+        var gameId = await _apiService.StartGameAsync(gridSize, difficulty);
         _stateService.InitializeGame(gameId);
     }
 

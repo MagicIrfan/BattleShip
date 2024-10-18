@@ -1,5 +1,4 @@
 ﻿@page "/"
-@inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -11,30 +10,34 @@
 
 <main>
     <header>
-        <h1 id="title">Bataille Navale</h1>
-    </header>
-    <div class="buttons">
-        @if (isUserAuthenticated)
-        {
-            <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
-            <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
-            <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
-        }
-        else
-        {
-            <button role="button" @onclick="NavigateToLogin">Se connecter</button>
-        }
-    </div>
-
-    <div class="profile">
-        @if (isUserAuthenticated && user != null)
-        {
-            <div class="profile-details">
-                <img src="@user.Profile" alt="Profile Picture" class="profile-image" />
-                <p>@user.Name</p>
+        <div class="header-content">
+            <div class="container-center">
+                <h1 id="title">Bataille Navale</h1>
+                <div class="buttons">
+                    @if (isUserAuthenticated)
+                    {
+                        <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
+                        <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
+                        <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
+                    }
+                    else
+                    {
+                        <button role="button" @onclick="NavigateToLogin">Se connecter</button>
+                    }
+                </div>
             </div>
-        }
-    </div>
+
+            @if (isUserAuthenticated && user != null)
+            {
+                <div class="profile">
+                    <div class="profile-details">
+                        <img src="@user.Profile" alt="Profile Picture" class="profile-image" />
+                        <p>@user.Name</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </header>
 </main>
 
 @code {
@@ -64,7 +67,6 @@
     private async Task PlayGameSingle()
     {
         await GameModalService.ShowModal<ChooseDifficultyModal>("Choisir une difficulté", "Choisir une difficulté");
-        //Navigation.NavigateTo("/game");
     }
 
     private void PlayGameMultiplayer()
@@ -75,22 +77,47 @@
 
 <style>
     header {
-        margin-bottom: 12em;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    .container-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex-grow: 1;
     }
 
     #title {
         font-size: 4em;
-        text-align: center;
         color: white;
         text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
         font-style: italic;
+        margin-bottom: 40px;
+    }
+
+    p{
+        font-size: 1em;
+        color: white;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+        font-weight:bold;
     }
 
     .buttons {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
         gap: 20px;
     }
 
@@ -119,19 +146,22 @@
 
     .profile {
         display: flex;
-        justify-content: flex-end; 
-        margin-top: 20px; 
+        justify-content: flex-end;
+        align-items: center;
+        margin-left: auto; /* Pousse le profil à l'extrême droite */
     }
 
     .profile-details {
         display: flex;
-        align-items: center; 
-        gap: 10px; 
+        align-items: center;
+        flex-direction:column;
+        justify-content:center;
+        gap: 10px;
     }
 
     .profile-image {
-        width: 50px; 
-        height: 50px; 
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
         object-fit: cover;
     }

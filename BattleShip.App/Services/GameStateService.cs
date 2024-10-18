@@ -11,6 +11,7 @@ public interface IGameStateService
     Grid OpponentGrid { get; }
     List<string> Historique { get; }
     bool IsPlacingBoat { get; }
+    GameParameter GameParameter { get; set; }
 
     void InitializeGame(Guid? gameId);
     void UpdateGameState(AttackResponse attackResponse);
@@ -27,12 +28,14 @@ public class GameStateService : IGameStateService
     public Grid OpponentGrid { get; private set; }
     public List<string> Historique { get; private set; } = new List<string>();
     public bool IsPlacingBoat { get; private set; } = true;
+    public GameParameter GameParameter { get; set; } = new GameParameter();
 
     public void InitializeGame(Guid? gameId)
     {
+        int GridSize = GameParameter.GridSize;
         GameId = gameId;
-        PlayerGrid = new Grid(10, 10);
-        OpponentGrid = new Grid(10, 10);
+        PlayerGrid = new Grid(GridSize, GridSize);
+        OpponentGrid = new Grid(GridSize, GridSize);
         Boats.Clear();
         Historique.Clear();
         IsPlacingBoat = true;

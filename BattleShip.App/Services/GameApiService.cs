@@ -6,7 +6,7 @@ namespace BattleShip.Services;
 
 public interface IGameApiService
 {
-    Task<Guid?> StartGameAsync();
+    Task<Guid?> StartGameAsync(int gridSize, int difficulty);
     Task PlaceBoatsAsync(List<Boat> boats, Guid? gameId);
     Task<AttackResponse> AttackAsync(Guid? gameId, Position attackPosition);
     Task<RollbackResponse?> RollbackAsync(Guid? gameId);
@@ -21,28 +21,28 @@ public class GameApiService : IGameApiService
         _httpService = httpService;
     }
 
-    public async Task<Guid?> StartGameAsync()
+    public async Task<Guid?> StartGameAsync(int gridSize, int difficulty)
     {
-        var startGameRequest = new StartGameRequest(10, 2);
-        var response = await SendRequest(HttpMethod.Post, "/startGame", startGameRequest);
+        var startGameRequest = new StartGameRequest(gridSize, difficulty);
+        var response = await SendRequest(HttpMethod.Post, "/game/startGame", startGameRequest);
         return response != null ? Guid.Parse(response) : null;
     }
 
     public async Task PlaceBoatsAsync(List<Boat> boats, Guid? gameId)
     {
-        await SendRequest(HttpMethod.Post, $"/placeBoats?gameId={gameId}", boats);
+        await SendRequest(HttpMethod.Post, $"/game/placeBoats?gameId={gameId}", boats);
     }
 
     public async Task<AttackResponse> AttackAsync(Guid? gameId, Position attackPosition)
     {
         var attackRequest = new AttackModel.AttackRequest(gameId ?? Guid.Empty, attackPosition);
-        var jsonString = await SendRequest(HttpMethod.Post, $"/attack?gameId={gameId}", attackRequest);
+        var jsonString = await SendRequest(HttpMethod.Post, $"/game/attack?gameId={gameId}", attackRequest);
         return JsonSerializer.Deserialize<AttackResponse>(jsonString);
     }
 
     public async Task<RollbackResponse?> RollbackAsync(Guid? gameId)
     {
-        var content = await SendRequest(HttpMethod.Post, $"/rollback?gameId={gameId}");
+        var content = await SendRequest(HttpMethod.Post, $"/game/rollback?gameId={gameId}");
         var rollback = JsonSerializer.Deserialize<RollbackResponse>(content, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true

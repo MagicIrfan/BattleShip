@@ -2,7 +2,7 @@
 @inject IJSRuntime JsRuntime
 @inject IGameEventService GameEventService
 
-<div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef" style="--grid-size: @(PositionsData.Length)">
+<div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
     @foreach (var row in Enumerable.Range(0, PositionsData.Length))
     {
         @foreach (var col in Enumerable.Range(0, PositionsData[0].Length))
@@ -190,18 +190,22 @@
 <style>
     .grid {
         display: grid;
-        grid-template-columns: repeat(var(--grid-size), 1fr);
-        grid-template-rows: repeat(var(--grid-size), 1fr);
+        grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+        grid-template-rows: repeat(var(--grid-size), var(--cell-size));
         gap: 5px;
         background-color: #dce7f1;
         padding: 10px;
         border-radius: 10px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        width: max-content; 
+        height: max-content; 
+        max-width: calc(var(--cell-size) * 15 + 100px);
+        max-height: calc(var(--cell-size) * 15 + 100px);
     }
 
     .cell {
-        width: 40px;
-        height: 40px;
+        width: var(--cell-size);
+        height: var(--cell-size);
         border: 1px solid #b0c4de;
         border-radius: 4px;
         position: relative;

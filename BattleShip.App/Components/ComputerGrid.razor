@@ -1,7 +1,7 @@
 ﻿@inject IGameService GameService
 @inject IJSRuntime JS
 
-<div class="grid" style="--grid-size: @(PositionsData.Length)">
+<div class="grid" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
     @for (int row = 0; row < PositionsData.Length; row++)
     {
         @for (int col = 0; col < PositionsData[0].Length; col++)
@@ -30,18 +30,22 @@
 <style>
     .grid {
         display: grid;
-        grid-template-columns: repeat(var(--grid-size), 1fr);
-        grid-template-rows: repeat(var(--grid-size), 1fr);
+        grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+        grid-template-rows: repeat(var(--grid-size), var(--cell-size));
         gap: 5px;
         background-color: #dce7f1;
         padding: 10px;
         border-radius: 10px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        width: max-content; 
+        height: max-content;
+        max-width: calc(var(--cell-size) * 15 + 100px);
+        max-height: calc(var(--cell-size) * 15 + 100px);
     }
 
     .cell {
-        width: 40px;
-        height: 40px;
+        width: var(--cell-size);
+        height: var(--cell-size);
         border: 1px solid #b0c4de;
         border-radius: 4px;
         position: relative;
