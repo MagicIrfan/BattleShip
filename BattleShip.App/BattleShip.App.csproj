@@ -11,6 +11,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <None Include="wwwroot\Public\gyarados-f.png" />
+	  <None Include="wwwroot\Public\sharpedo.png" />
+	  <None Include="wwwroot\Public\wailord.png" />
+	  <None Include="wwwroot\Public\whiscash.png" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Blazored.FluentValidation" Version="2.2.0" />
 		<PackageReference Include="Blazored.SessionStorage" Version="2.4.0" />
 		<PackageReference Include="Google.Protobuf" Version="3.28.2" />

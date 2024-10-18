@@ -1,27 +1,30 @@
 ﻿@page "/leaderboard"
 @inject IGameService GameService
 
-<h3>Leaderboard</h3>
-
 @if (leaderboard != null && leaderboard.Any())
 {
-    <table class="leaderboard-table">
-        <thead>
-            <tr>
-                <th>Player</th>
-                <th>Wins</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var player in leaderboard)
-            {
+    <div class="leaderboard-container">
+        <table class="leaderboard-table">
+            <thead>
                 <tr>
-                    <td>@player.Key</td> 
-                    <td>@player.Value</td>
+                    <th colspan="2">Leaderboard</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+                <tr>
+                    <th>Player</th>
+                    <th>Wins</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var player in leaderboard)
+                {
+                    <tr>
+                        <td>@player.Key</td>
+                        <td>@player.Value</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 else
 {
@@ -29,7 +32,6 @@ else
 }
 
 @code {
-
     Dictionary<string, int> leaderboard = new Dictionary<string, int>();
 
     protected override async Task OnInitializedAsync()
@@ -37,3 +39,47 @@ else
         leaderboard = await GameService.GetLeaderboard();
     }
 }
+
+<style>
+    .leaderboard-container {
+        max-width: 800px;
+        margin: 20px auto;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        background-color: #ffffff;
+    }
+
+    .leaderboard-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .leaderboard-table th {
+            background-color: #ffffff; /* Couleur de fond blanche */
+            color: #000; /* Couleur du texte noir */
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .leaderboard-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        .leaderboard-table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .leaderboard-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+    p {
+        text-align: center;
+        font-size: 1.2em;
+        color: #888;
+    }
+</style>

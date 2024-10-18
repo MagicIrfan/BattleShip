@@ -10,34 +10,33 @@
 
 <main>
     <header>
-        <div class="header-content">
-            <div class="container-center">
-                <h1 id="title">Bataille Navale</h1>
-                <div class="buttons">
-                    @if (isUserAuthenticated)
-                    {
-                        <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
-                        <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
-                        <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
-                    }
-                    else
-                    {
-                        <button role="button" @onclick="NavigateToLogin">Se connecter</button>
-                    }
+        @if (isUserAuthenticated && user != null)
+        {
+            <div class="profile">
+                <div class="profile-details">
+                    <img src="@user.Profile" alt="Profile Picture" class="profile-image" />
+                    <p>@user.Name</p>
                 </div>
             </div>
-
-            @if (isUserAuthenticated && user != null)
-            {
-                <div class="profile">
-                    <div class="profile-details">
-                        <img src="@user.Profile" alt="Profile Picture" class="profile-image" />
-                        <p>@user.Name</p>
-                    </div>
-                </div>
-            }
-        </div>
+        }
     </header>
+    <div class="header-content">
+        <div class="container-center">
+            <h1 id="title">Bataille Navale</h1>
+            <div class="buttons">
+                @if (isUserAuthenticated)
+                {
+                    <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
+                    <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
+                    <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
+                }
+                else
+                {
+                    <button role="button" @onclick="NavigateToLogin">Se connecter</button>
+                }
+            </div>
+        </div>
+    </div>
 </main>
 
 @code {
@@ -76,19 +75,19 @@
 }
 
 <style>
-    header {
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    main{
+        width:100%;
+        display:flex;
+        flex-direction:column;
     }
-
+    header{
+        padding-right:50px;
+    }
     .header-content {
         display: flex;
-        justify-content: space-between;
+        justify-content: right;
         align-items: center;
         width: 100%;
-        padding: 0 20px;
     }
 
     .container-center {
@@ -148,7 +147,7 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        margin-left: auto; /* Pousse le profil à l'extrême droite */
+        margin-left: auto; 
     }
 
     .profile-details {

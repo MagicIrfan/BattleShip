@@ -94,10 +94,6 @@ html, body
 }
 
 #app {
-    height: 100vh;
-}
-
-#app {
     display: flex;
     justify-content: center;
     flex-direction:column;
@@ -116,5 +112,26 @@ html, body
     align-items: center;
     z-index: 1050; 
     background-color: rgba(0, 0, 0, 0.5);
+}
+
+.profile {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.profile-details {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+}
+
+.profile-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
