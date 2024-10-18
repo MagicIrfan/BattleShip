@@ -1,5 +1,6 @@
 ﻿using BattleShip.Exceptions;
 using BattleShip.Models;
+using Blazored.Modal.Services;
 using Microsoft.AspNetCore.Components;
 using System.Text.Json;
 
@@ -12,11 +13,14 @@ public interface IGameService
     Grid playerGrid { get; set; }
     Grid opponentGrid { get; set; }
     List<string> historique { get; set; }
+    bool IsPlacingBoat { get; set; }
     Task StartGame();
     Task PlaceBoats();
     Task Attack(Position attackPosition);
     void PlaceBoat(List<Position> positions);
     bool IsBoatAtPosition(Position position);
+    Task<Dictionary<string, int>> ShowLeaderboard();
+    Task Rollback();
 }
 
 public class GameService : IGameService
@@ -26,19 +30,21 @@ public class GameService : IGameService
     public required Grid playerGrid { get; set; }
     public required Grid opponentGrid { get; set; }
     public required List<string> historique { get; set; } = new List<string>();
-    private Dictionary<Position, Boat> boatPositions = new Dictionary<Position, Boat>();
+    public required bool IsPlacingBoat { get; set; } = true;
 
     private readonly IGameModalService _modalService;
     private readonly NavigationManager _navManager;
     private readonly ITokenService _tokenService;
     private readonly IHttpService _httpService;
+    private readonly IGameEventService _eventService;
 
-    public GameService(IGameModalService modalService, NavigationManager navManager, ITokenService tokenService, IHttpService httpService)
+    public GameService(IGameModalService modalService, NavigationManager navManager, ITokenService tokenService, IHttpService httpService, IGameEventService eventService)
     {
         _modalService = modalService;
         _navManager = navManager;
         _tokenService = tokenService;
         _httpService = httpService;
+        _eventService = eventService;
     }
 
     public async Task StartGame()
@@ -59,6 +65,9 @@ public class GameService : IGameService
                     gameId = Guid.Parse(result);
                     playerGrid = new Grid(10, 10);
                     opponentGrid = new Grid(10, 10);
+                    boats = new List<Boat>();
+                    historique = new List<string>();
+                    IsPlacingBoat = true;
                 }
             }
         }
@@ -108,17 +117,19 @@ public class GameService : IGameService
             if (attackResponse.PlayerIsWinner)
             {
                 Console.WriteLine("Le joueur a gagné !");
+                var result = await _modalService.ShowModal("Gagné", "Vous avez gagné la partie");
+                if (result == "restart")
+                {
+                    _eventService.RaiseGameRestarted();
+                    await StartGame();
+                }
+                else if (result == "return")
+                {
+                    _navManager.NavigateTo("/");
+                }
             }
 
-			historique.Add($"Le joueur 1 a attaqué la position {attackResponse.PlayerAttackPosition.X}, {attackResponse.PlayerAttackPosition.Y}");
-			if (attackResponse.PlayerIsHit)
-			{
-				historique.Add($"Le joueur 1 a touché un bateau");
-			}
-			else
-			{
-				historique.Add($"Le joueur 1 s'est raté");
-			}
+            historique.Add($"Le joueur 1 a attaqué la position ({attackResponse.PlayerAttackPosition.X}, {attackResponse.PlayerAttackPosition.Y}) - {(attackResponse.PlayerIsHit ? "Touché" : "Raté")}");
 
 			if (attackResponse.PlayerIsSunk)
             {
@@ -127,28 +138,32 @@ public class GameService : IGameService
 
             UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit, playerGrid);
 
-			historique.Add($"L'ordinateur a attaqué la position {attackResponse.AiAttackPosition.X}, {attackResponse.AiAttackPosition.Y}");
-            if (attackResponse.AiIsHit)
+            if (attackResponse.AiIsWinner)
             {
-				historique.Add($"L'ordinateur a touché un bateau !");
-			}
-            else
-            {
-				historique.Add($"L'ordinateur s'est raté");
-			}
+                Console.WriteLine("L'ordinateur a gagné !");
+                var result = await _modalService.ShowModal("Perdu", "Vous avez perdu la partie");
+                if (result == "restart")
+                {
+                    _eventService.RaiseGameRestarted();
+                    await StartGame();
+
+                }
+                else if (result == "return")
+                {
+                    _navManager.NavigateTo("/");
+                }
+            }
+
+            historique.Add($"L'ordinateur a attaqué la position ({attackResponse.AiAttackPosition.X}, {attackResponse.AiAttackPosition.Y}) - {(attackResponse.AiIsHit ? "Touché" : "Raté")}");
 
 			if (attackResponse.AiIsSunk)
 			{
 				historique.Add("L'ordinateur a coulé un bateau !");
 			}
-
-			if (attackResponse.AiIsWinner)
-            {
-                Console.WriteLine("L'ordinateur a gagné !");
-            }
         }
 
-		else
+
+        else
         {
             throw new AttackException($"Error calling attack: {playerAttackResponse.StatusCode}", playerAttackResponse.StatusCode);
         }
@@ -172,5 +187,15 @@ public class GameService : IGameService
     public bool IsBoatAtPosition(Position position)
     {
         return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
+    }
+
+    public async Task<Dictionary<string, int>> ShowLeaderboard()
+    {
+        return null;
+    }
+
+    public async Task Rollback()
+    {
+        var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/rollback?gameId={gameId}");
     }
 }

@@ -16,6 +16,7 @@
         {
             <button role="button" @onclick="PlayGameSingle">Jouer contre l'IA</button>
             <button role="button" @onclick="PlayGameMultiplayer">Jouer en multijoueur</button>
+            <button role="button" @onclick="ShowLeaderboard">Afficher le leaderboard</button>
         }
         else
         {
@@ -35,6 +36,11 @@
     }
 
     private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/authentication/login");
+    }
+
+    private void ShowLeaderboard()
     {
         Navigation.NavigateTo("/authentication/login");
     }

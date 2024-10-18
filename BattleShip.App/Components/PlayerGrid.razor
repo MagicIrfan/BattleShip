@@ -1,5 +1,6 @@
 ﻿@inject IGameService GameService
 @inject IJSRuntime JsRuntime
+@inject IGameEventService GameEventService
 
 <div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef">
     @foreach (var row in Enumerable.Range(0, PositionsData.Length))
@@ -28,8 +29,8 @@
     [Parameter]
     public bool IsPlacingBoats { get; set; }
 
-    private bool isVertical;
-    private int indexBoat;
+    private bool isVertical = false;
+    private int indexBoat = 0;
     private int gridSize = 10;
     private IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
     private int mouseRow = -1;
@@ -40,6 +41,28 @@
 
     [Parameter]
     public EventCallback OnTogglePlacingBoats { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        GameEventService.OnGameRestarted += HandleGameRestarted;
+    }
+
+    private void HandleGameRestarted()
+    {
+        isVertical = false;
+        indexBoat = 0;
+        gridSize = 10;
+        sizes = new List<int> { 2, 3, 3, 4, 5 };
+        mouseRow = -1;
+        mouseCol = -1;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        GameEventService.OnGameRestarted -= HandleGameRestarted;
+    }
 
     private bool CheckBoatPlacementValidity()
     {

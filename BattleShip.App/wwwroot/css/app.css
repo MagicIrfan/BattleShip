@@ -77,52 +77,23 @@ code {
 }
 
 body {
-    margin: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-image: linear-gradient(to right, #003366, #3399ff);
-    height: 100vh;
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box; 
+
+html, body {
+    height: 100vh; 
+    margin: 0; 
+}
+
+main {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    flex-direction: column;
+    height: 100%;
 }
 
-.grid {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    grid-template-rows: repeat(10, 1fr);
-    gap: 5px;
-    background-color: #dce7f1;
-    padding: 10px;
-    border-radius: 10px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-.cell {
-    width: 40px;
-    height: 40px;
-    border: 1px solid #b0c4de;
-    border-radius: 4px;
-    position: relative;
-}
-
-    .cell:not([disabled]):hover {
-        background-color: #7fc9ff;
-    }
-
-    .cell:not([disabled]) {
-        cursor: pointer;
-        transition: transform 0.2s, background-color 0.2s;
-    }
-
-.boat-symbol {
-    font-weight: bold;
-    color: darkblue;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
