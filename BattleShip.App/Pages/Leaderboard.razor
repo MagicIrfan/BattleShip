@@ -1,10 +1,39 @@
 ﻿@page "/leaderboard"
-@inject IGameService GameServic
+@inject IGameService GameService
+
 <h3>Leaderboard</h3>
 
+@if (leaderboard != null && leaderboard.Any())
+{
+    <table class="leaderboard-table">
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Wins</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var player in leaderboard)
+            {
+                <tr>
+                    <td>@player.Key</td> 
+                    <td>@player.Value</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Loading leaderboard...</p>
+}
+
 @code {
+
+    Dictionary<string, int> leaderboard = new Dictionary<string, int>();
+
     protected override async Task OnInitializedAsync()
     {
-        //await GameService.StartGame();
+        leaderboard = await GameService.GetLeaderboard();
     }
 }

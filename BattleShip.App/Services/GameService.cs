@@ -19,7 +19,7 @@ public interface IGameService
     Task Attack(Position attackPosition);
     void PlaceBoat(List<Position> positions);
     bool IsBoatAtPosition(Position position);
-    Task<Dictionary<string, int>> ShowLeaderboard();
+    Task<Dictionary<string, int>> GetLeaderboard();
     Task Rollback();
 }
 
@@ -189,13 +189,38 @@ public class GameService : IGameService
         return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
     }
 
-    public async Task<Dictionary<string, int>> ShowLeaderboard()
+    public async Task<Dictionary<string, int>> GetLeaderboard()
     {
-        return null;
+        // Envoyer la requête HTTP pour récupérer le leaderboard
+        var leaderboardResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Get, "/leaderboard");
+
+        // Lire le contenu de la réponse
+        var leaderboardContent = await leaderboardResponse.Content.ReadAsStringAsync();
+
+        // Désérialiser le contenu JSON en dictionnaire
+        var leaderboard = JsonSerializer.Deserialize<Dictionary<string, int>>(leaderboardContent, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true // Permet d'ignorer la casse des noms de propriétés
+        });
+
+        return leaderboard;
     }
 
     public async Task Rollback()
     {
-        var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/rollback?gameId={gameId}");
+        var rollbackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/rollback?gameId={gameId}");
+        var rollbackContent = await rollbackResponse.Content.ReadAsStringAsync();
+        var rollback = JsonSerializer.Deserialize<RollbackResponse>(rollbackContent, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        var computerPosition = rollback.LastPlayerAttackPosition;
+        var playerPosition = rollback.LastIaAttackPosition;
+        playerGrid.PositionsData[playerPosition.X][playerPosition.Y].Position = playerPosition;
+        playerGrid.PositionsData[playerPosition.X][playerPosition.Y].State = null;
+
+        opponentGrid.PositionsData[computerPosition.X][computerPosition.Y].Position = computerPosition;
+        opponentGrid.PositionsData[computerPosition.X][computerPosition.Y].State = null;
     }
 }

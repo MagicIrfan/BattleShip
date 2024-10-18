@@ -9,7 +9,7 @@
 <main>
     @if (GameService.gameId != null)
     {
-        <button @click="OnRollback">Rollback</button>
+        <button @onclick="OnRollback">Rollback</button>
         <div class="grids">
             <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
 
@@ -95,6 +95,6 @@
 
     private async Task OnRollback()
     {
-        
+        await GameService.Rollback();
     }
 }
