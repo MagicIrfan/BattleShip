@@ -15,5 +15,8 @@ public class StartGameRequestValidator : AbstractValidator<StartGameRequest>
         RuleFor(x => x.Difficulty)
             .NotEmpty().WithMessage("Difficulty is required.")
             .InclusiveBetween(1, 3).WithMessage("Difficulty must be between 1 and 3.");
+        RuleFor(x => x.SizeGrid)
+            .InclusiveBetween(5, 20).WithMessage("SizeGrid must be between 5 and 20.")
+            .When(x => x.SizeGrid.HasValue);
     }
 }
