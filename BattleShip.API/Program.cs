@@ -149,4 +149,7 @@ gameMethodsGroup.MapPost("/attack", [Authorize] async ([FromBody] AttackModel.At
 var authenticationMethodsGroup = app.MapGroup("/api/auth/");
 authenticationMethodsGroup.MapGet("/profile", [Authorize] async ([FromServices] IAuthenticationService authService) => await authService.Profile());
 
+var multiplayerMethodsGroup = app.MapGroup("/api/multiplayer/");
+multiplayerMethodsGroup.MapGet("/lobbies", [Authorize] async ([FromServices] IMultiplayerService multiplayerService) => await multiplayerService.GetAvailableLobbies());
+
 app.Run();

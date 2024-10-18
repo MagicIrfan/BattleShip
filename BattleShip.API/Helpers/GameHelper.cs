@@ -25,7 +25,9 @@ public static class GameHelper
     {
         if (gameState.AttackHistory.IsNullOrEmpty())
         {
-            if (!gameState.Players.Any(p => p.PlayerId.Equals(playerId)))
+            var firstPlayerId = gameState.Players.First().PlayerId;
+
+            if (!firstPlayerId.Equals(playerId))
                 throw new UnauthorizedAccessException("User not allowed to play this turn");
         }
         else if (gameState.AttackHistory.Last().PlayerId.Equals(playerId))

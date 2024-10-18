@@ -3,18 +3,45 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @inject HttpClient HttpClient
 @inject ITokenService TokenService
+@inject IJSRuntime JS
 
 <h3>Multiplayer BattleShip</h3>
 
-<div class="game-setup">
-    <label>Enter Game ID (or create new one):</label>
-    <input @bind="_gameIdInput" placeholder="Enter or generate a Game ID" />
-    <button @onclick="JoinGame">Join Game</button>
+<div class="game-container">
+    <div class="game-setup join-lobby">
+        <h4>Join an Existing Lobby</h4>
+        <label>Enter Game ID:</label>
+        <div style="display: flex; align-items: center;">
+            <input @bind="_gameIdInput" placeholder="Enter Game ID" />
+            <button @onclick="() => JoinGame(Guid.TryParse(_gameIdInput, out var gameId) ? gameId : null)" class="join-game-button">Join Game</button>
+        </div>
+        <label>Available Lobbies:</label>
+        <ul class="available-lobbies">
+            @foreach (var lobby in _availableLobbies)
+            {
+            <li>
+                <button @onclick="() => JoinGame(lobby.GameId)">Lobby ID: @lobby.GameId</button>
+            </li>
+            }
+        </ul>
+    </div>
+
+    <div class="game-setup create-lobby">
+        <h4>Create a New Lobby</h4>
+        <div class="checkbox-container">
+            <label>Is Private ?</label>
+            <label class="toggle-label">
+                <input type="checkbox" class="toggle-checkbox" @bind="_isPrivate" />
+                <span class="slider"></span>
+            </label>
+        </div>
+        <button @onclick="CreateLobby">Create Lobby</button>
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(_message))
 {
-    <p class="error-message">@_message</p>
+<p class="error-message">@_message</p>
 }
 
 @if (_gameId != Guid.Empty)
@@ -25,41 +52,40 @@
 
 @if (_playerProfiles.Count > 0)
 {
-    <div class="players-section">
-        <h4>Players in Game:</h4>
-        <div class="player-list">
-            @foreach (var player in _playerProfiles)
-            {
-                <div class="player-card">
-                    <div class="player-icon">
-                        @if (_readyPlayers.Contains(player.Id))
-                        {
-                            <span class="checkmark">✔️</span>
-                        }
+<div class="players-section">
+    <h4>Players in Game:</h4>
+    <div class="player-list">
+        @foreach (var player in _playerProfiles)
+        {
+        <div class="player-card">
+            <div class="player-icon">
+                @if (_readyPlayers.Contains(player.Id))
+                {
+                <span class="checkmark">✔️</span>
+                }
+                @if (!string.IsNullOrEmpty(player.Picture))
+                {
+                <img src="@player.Picture" alt="Profile Picture" class="profile-picture" />
+                }
+                else
+                {
+                <span>👤</span>
+                }
+            </div>
 
-                        @if (!string.IsNullOrEmpty(player.Picture))
-                        {
-                            <img src="@player.Picture" alt="Profile Picture" class="profile-picture" />
-                        }
-                        else
-                        {
-                            <span>👤</span> 
-                        }
-                    </div>
-
-                    <div class="player-id">
-                        <span>@player.Username</span>
-                    </div>
-                </div>
-            }
+            <div class="player-id">
+                <span>@player.Username</span>
+            </div>
         </div>
+        }
     </div>
+</div>
 
-    <button @onclick="SetReady" disabled="@(!IsReadyEnabled)" class="ready-button">
-        Prêt
-    </button>
-
+<button @onclick="SetReady" disabled="@(!IsReadyEnabled)" class="ready-button">
+    Prêt
+</button>
 }
+
 
 @code {
     private string _gameIdInput = string.Empty;
@@ -72,12 +98,15 @@
     private string? _profilePicture;
     private string? _playerName;
     private string? _playerId;
+    private List<LobbyModel>? _availableLobbies = [];
+    private bool _isPrivate;
 
     protected override async Task OnInitializedAsync()
     {
         var token = await TokenService.GetAccessTokenAsync();
         
         await LoadPlayerProfile();
+        await LoadAvailableLobbies();
 
         HubConnection = new HubConnectionBuilder()
             .WithUrl("https://localhost:5134/gamehub", options =>
@@ -95,7 +124,7 @@
 
         HubConnection.On<HashSet<string>>("UpdateReadyStatus", (readyPlayersList) =>
         {
-            _readyPlayers = [..readyPlayersList];
+            _readyPlayers = new HashSet<string>(readyPlayersList);
             StateHasChanged();
         });
 
@@ -112,23 +141,47 @@
         });
 
         await HubConnection.StartAsync();
+        
+        await JS.InvokeVoidAsync("window.addEventListener", "beforeunload", EventCallback.Factory.Create(this, async () => await LeaveGame()));
     }
     
-    private async Task JoinGame()
+    private async Task LoadAvailableLobbies()
+    {
+        var token = await TokenService.GetAccessTokenAsync();
+        HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await HttpClient.GetAsync("https://localhost:5134/api/multiplayer/lobbies");
+        if (response.IsSuccessStatusCode)
+        {
+            _availableLobbies = await response.Content.ReadFromJsonAsync<List<LobbyModel>>();
+        }
+    }
+    
+    private async Task JoinGame(Guid? lobbyId = null)
     {
         _message = string.Empty;
-        if (Guid.TryParse(_gameIdInput, out var parsedGameId))
+
+        if (lobbyId.HasValue)
+        {
+            _gameId = lobbyId.Value; 
+        }
+        else if (Guid.TryParse(_gameIdInput, out var parsedGameId))
         {
             _gameId = parsedGameId;
         }
         else
         {
-            _gameId = Guid.NewGuid();
-            _gameIdInput = _gameId.ToString();
+            return;
         }
 
-        await HubConnection.SendAsync("JoinLobby", _gameId, _playerName, _profilePicture);
+        await HubConnection.SendAsync("JoinLobby", _gameId, _playerName, _profilePicture); 
         _playerProfiles.Clear();
+    }
+
+    private async Task CreateLobby()
+    {
+        _gameId = Guid.NewGuid();
+        _message = string.Empty;
+        await HubConnection.SendAsync("CreateLobby", _gameId, _playerName, _profilePicture, _isPrivate);
     }
 
     private async Task LeaveGame()
@@ -182,9 +235,16 @@
             StateHasChanged();
         }
     }
-
+    
+    public void Dispose()
+    {
+        if (HubConnection != null)
+        {
+            LeaveGame().GetAwaiter().GetResult();
+            HubConnection.DisposeAsync();
+        }
+    }
 }
-
 
 <style>
     .error-message {
@@ -192,9 +252,87 @@
         font-weight: bold;
         margin-top: 0.5em;
     }
-    
+
+    .game-container {
+        display: flex;
+        height: 50vh;
+    }
+
     .game-setup {
         margin-bottom: 1em;
+        padding: 1em;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        height: 100%; 
+        box-sizing: border-box; 
+    }
+
+    .join-lobby {
+        width: 50%; 
+    }
+
+    .create-lobby {
+        width: 50%; 
+    }
+
+    .game-setup h4 {
+        margin-bottom: 0.5em;
+    }
+
+    .game-setup label {
+        margin: 0.5em 0;
+    }
+
+    .game-setup {
+        display: flex;
+        align-items: center;
+    }
+
+    .game-setup input {
+        width: calc(100% - 110px); 
+        padding: 0.5em;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-bottom: 1em;
+    }
+
+    .join-game-button {
+        padding: 0.5em 1em;
+        margin-left: 10px;
+    }
+
+    .available-lobbies {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .available-lobbies li {
+        margin: 0.5em 0;
+    }
+
+    button {
+        background-color: #007BFF;
+        color: white;
+        padding: 0.5em 1em;
+        font-size: 1em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%; 
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    .leave-button {
+        background-color: #ff6b6b;
+    }
+
+    .leave-button:hover {
+        background-color: #ff4c4c;
     }
 
     .players-section {
@@ -224,16 +362,6 @@
     .player-id {
         margin-top: 0.5em;
         font-weight: bold;
-    }
-
-    .leave-button {
-        background-color: #ff6b6b;
-        border: none;
-        color: white;
-        padding: 0.5em 1em;
-        font-size: 1em;
-        border-radius: 4px;
-        cursor: pointer;
     }
 
     .ready-button {
@@ -266,4 +394,80 @@
         font-size: 1.5em;
         color: green;
     }
+
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+    }
+
+    .toggle-checkbox {
+        display: none;
+    }
+
+    .toggle-label {
+        cursor: pointer;
+        width: 50px; 
+        height: 26px;
+        background-color: #ccc;
+        border-radius: 13px; 
+        position: relative;
+        transition: background-color 0.3s;
+    }
+
+    .toggle-checkbox {
+        display: none; 
+    }
+
+    .toggle-label:before {
+        content: "";
+        position: absolute;
+        width: 22px; 
+        height: 22px;
+        background-color: white;
+        border-radius: 50%; 
+        top: 2px; 
+        left: 2px; 
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .toggle-checkbox:checked + .toggle-label {
+        background-color: #4CAF50;
+    }
+
+    .toggle-checkbox:checked + .toggle-label:before {
+        transform: translateX(24px); 
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 13px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+
+    .toggle-checkbox:checked + .slider {
+        background-color: #4CAF50;
+    }
+
+    .toggle-checkbox:checked + .slider:before {
+        transform: translateX(24px);
+    }
 </style>
+

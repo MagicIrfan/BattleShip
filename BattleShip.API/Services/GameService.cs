@@ -104,12 +104,10 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
 
-        // Rollback IA attack
         var lastIaAttack = GameHelper.RollbackLastAttack(gameState);
         if (lastIaAttack == null)
             return Task.FromResult(Results.BadRequest("Invalid attack history"));
 
-        // Rollback Player attack
         var lastPlayerAttack = GameHelper.RollbackLastAttack(gameState);
         if (lastPlayerAttack == null)
             return Task.FromResult(Results.BadRequest("Invalid attack history"));
