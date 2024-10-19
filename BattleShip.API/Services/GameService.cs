@@ -8,23 +8,21 @@ namespace BattleShip.API.Services;
 public interface IGameService
 {
     Task<AttackModel.AttackResponse> ProcessAttack(AttackModel.AttackRequest attackRequest,
-        IValidator<AttackModel.AttackRequest> validator);
+        IValidator<AttackModel.AttackRequest> validator, string? playerId = null);
 
     Task<IResult> RollbackTurn(Guid gameId);
     Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
     Task<IResult> GetLeaderboard();
-    Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator);
+    Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator, string? playerId = null);
 }
 
 public class GameService(IGameRepository gameRepository, IHttpContextAccessor httpContextAccessor) : IGameService
 {
     private HttpContext Context => httpContextAccessor.HttpContext!;
 
-    public async Task<AttackModel.AttackResponse> ProcessAttack(AttackModel.AttackRequest attackRequest, IValidator<AttackModel.AttackRequest> validator)
+    public async Task<AttackModel.AttackResponse> ProcessAttack(AttackModel.AttackRequest attackRequest, IValidator<AttackModel.AttackRequest> validator, string? playerId = null)
     {
-        var playerId = Context.User.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-            ?? throw new UnauthorizedAccessException("User not recognized");
+        playerId ??= Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
         var gameState = gameRepository.GetGame(attackRequest.GameId)
             ?? throw new KeyNotFoundException("Game not found");
@@ -169,7 +167,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         return Task.FromResult(Results.Ok(leaderboard));
     }
     
-    public Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator)
+    public Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator, string? playerId = null)
     {
         foreach (var validationResult in playerBoats.Select(validator.Validate))
         {
@@ -180,8 +178,7 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
             }
         }
 
-        var playerId = Context.User.Claims
-            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        playerId ??= Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");

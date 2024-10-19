@@ -164,8 +164,6 @@ public class GameService : IGameService
 				historique.Add("L'ordinateur a coulé un bateau !");
 			}
         }
-
-
         else
         {
             throw new AttackException($"Error calling attack: {playerAttackResponse.StatusCode}", playerAttackResponse.StatusCode);

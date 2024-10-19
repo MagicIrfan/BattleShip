@@ -39,8 +39,8 @@ public class GameHub(IMultiplayerService multiplayerService) : Hub
         await multiplayerService.PlaceBoat(playerBoats, gameId, Context);
     }
 
-    public async Task SendAttack(Guid gameId, int x, int y)
+    public async Task SendAttack(Guid gameId, Position position)
     {
-        await multiplayerService.SendAttack(gameId, x, y, Context);
+        await multiplayerService.SendAttack(gameId, position, Context);
     }
 }

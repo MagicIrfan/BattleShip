@@ -1,5 +1,7 @@
 ﻿using System.Security.Claims;
+using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Pages;
 using FluentValidation;
 using Microsoft.AspNetCore.SignalR;
 
@@ -14,14 +16,14 @@ public interface IMultiplayerService
     Task OnDisconnectedAsync(HubCallerContext context);
     Task<List<LobbyModel>> GetAvailableLobbies();
     Task PlaceBoat(List<Boat> playerBoats, Guid gameId, HubCallerContext context);
-    Task SendAttack(Guid gameId, int x, int y, HubCallerContext context);
+    Task SendAttack(Guid gameId, Position position, HubCallerContext context);
 }
 
 public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository, IGameService gameService, IValidator<Boat> boatValidator, IValidator<AttackModel.AttackRequest> attackValidator) : IMultiplayerService
 {
     private static readonly Dictionary<Guid, LobbyModel> Lobbies = new();
     
-    public async Task SendAttack(Guid gameId, int x, int y, HubCallerContext context)
+    public async Task SendAttack(Guid gameId, Position position, HubCallerContext context)
     {
         var attackerId = context.User?.Claims
             .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -29,14 +31,20 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         if (string.IsNullOrEmpty(attackerId))
             throw new UnauthorizedAccessException("User not recognized");
 
-        var attackRequest = new AttackModel.AttackRequest(gameId, new Position(x, y));
+        var attackRequest = new AttackModel.AttackRequest(gameId, position);
 
-        var attackResponse = await gameService.ProcessAttack(attackRequest, attackValidator);
+        var attackResponse = await gameService.ProcessAttack(attackRequest, attackValidator, attackerId);
 
-        await gameHub.Clients.Group(gameId.ToString()).SendAsync("AttackResult", new 
+        await gameHub.Clients.User(attackerId).SendAsync("AttackResult", attackResponse);
+
+        var game = gameRepository.GetGame(gameId);
+        var otherPlayerId = game?.Players
+        .FirstOrDefault(p => p.PlayerId != attackerId)?.PlayerId;
+
+        if (!string.IsNullOrEmpty(otherPlayerId))
         {
-            attackResponse
-        });
+            await gameHub.Clients.User(otherPlayerId).SendAsync("ReceiveAttackResult", attackResponse);
+        }
     }
     
     public async Task PlaceBoat(List<Boat> playerBoats, Guid gameId, HubCallerContext context)
@@ -47,7 +55,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         if (string.IsNullOrEmpty(playerId))
             throw new UnauthorizedAccessException("User not recognized");
         
-        await gameService.PlaceBoats(playerBoats, gameId, boatValidator);
+        await gameService.PlaceBoats(playerBoats, gameId, boatValidator, playerId);
         await gameHub.Clients.Group(gameId.ToString()).SendAsync("BoatPlaced", playerId);
         
         if (gameRepository.GetGame(gameId)!.Players.All(p => p.PlayerBoats.Count == 5))

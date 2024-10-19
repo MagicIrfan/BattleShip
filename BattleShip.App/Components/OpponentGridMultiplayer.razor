@@ -1,5 +1,4 @@
-﻿@inject IGameService GameService
-@inject IJSRuntime JS
+﻿@inject IJSRuntime JS
 <div class="grid" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
     @for (int row = 0; row < PositionsData.Length; row++)
     {
@@ -11,8 +10,8 @@
             string cellBackGroundColor = GridUtils.GetCellBackgroundColor(opponentPositionData);
 
             <button class="cell" @onclick="() => OnAttack.InvokeAsync(opponentPosition)"
-            style="background-color: @(cellBackGroundColor)"
-            disabled="@(PositionState.MISS.Equals(opponentPositionData.State) || PositionState.HIT.Equals(opponentPositionData.State) || IsPlacingBoats)">
+                    style="background-color: @(cellBackGroundColor)"
+                    disabled="@(PositionState.MISS.Equals(opponentPositionData.State) || PositionState.HIT.Equals(opponentPositionData.State) || IsPlacingBoats)">
             </button>
         }
     }
@@ -31,6 +30,8 @@
     [Parameter]
     public bool IsPlacingBoats { get; set; }
     [Parameter] public EventCallback<Position> OnAttack { get; set; }
+    [Parameter]
+    public bool IsMultiplayer { get; set; }
 }
 
 <style>
@@ -43,7 +44,7 @@
         padding: 10px;
         border-radius: 10px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        width: max-content; 
+        width: max-content;
         height: max-content;
         max-width: calc(var(--cell-size) * 15 + 100px);
         max-height: calc(var(--cell-size) * 15 + 100px);

@@ -1,20 +1,18 @@
-﻿@page "/game"
-@inject IGameService GameService
+﻿@page "/game-multiplayer/{GameId}"
+@inject IGameMultiplayerService GameService
 @inject IJSRuntime JsRuntime
 @inject IModalService Modal
 @inject ITokenService TokenService
+@inject SignalRService _signalRService
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
 @attribute [Authorize]
 
-<PageTitle>BattleShip</PageTitle>
-
 <main>
-    @if (GameService.gameId != null)
+    @if (GameService.playerGrid != null && GameService.opponentGrid != null && GameId != null)
     {
-        <button @onclick="OnRollback">Rollback</button>
         <div class="grids">
-            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
+            <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGridMultiplayer>
 
             <div class="historique-container">
                 @foreach (var item in GameService.historique)
@@ -49,10 +47,10 @@
         border: 1px solid #d1d1d1;
         border-radius: 10px;
         padding: 20px;
-        overflow-y: auto; 
+        overflow-y: auto;
         flex-grow: 1;
         display: flex;
-        flex-direction: column; 
+        flex-direction: column;
         width:320px;
         max-height:480px;
     }
@@ -80,9 +78,15 @@
 </style>
 
 @code {
-    private void TogglePlacingBoats()
+    [Parameter] public string GameId { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
-        GameService.IsPlacingBoat = !GameService.IsPlacingBoat;
+        Console.WriteLine(GameId);
+        var guidValue = Guid.Parse(GameId);
+        await GameService.CreateHubConnection();
+        await GameService.StartGame(guidValue);
+        GameService.OnStateChanged += async () => await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleAttack(Position position)
@@ -91,13 +95,13 @@
         StateHasChanged();
     }
 
-    protected override async Task OnInitializedAsync()
+    private void TogglePlacingBoats()
     {
-        await GameService.StartGame();
+        GameService.IsPlacingBoat = false;
     }
 
-    private async Task OnRollback()
+    public void Dispose()
     {
-        await GameService.Rollback();
+        GameService.OnStateChanged -= async () => await InvokeAsync(StateHasChanged);
     }
 }

@@ -1,0 +1,245 @@
+﻿@inject IGameMultiplayerService GameService
+@inject IJSRuntime JsRuntime
+@inject IGameEventService GameEventService
+@inject IUserService UserService
+
+
+<!--@if (User != null)
+{
+    <div class="profile">
+        <div class="profile-details">
+            <img src="@User.Profile" alt="Profile Picture" class="profile-image" />
+            <p>@User.Name</p>
+        </div>
+    </div>
+}-->
+
+<div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
+    @foreach (var row in Enumerable.Range(0, PositionsData.Length))
+    {
+        @foreach (var col in Enumerable.Range(0, PositionsData[0].Length))
+        {
+            var playerPositionData = PositionsData[col][row];
+            var playerPosition = playerPositionData.Position;
+            string cellBackgroundColor = GetCellBackgroundColor(playerPosition, col, row);
+            bool isDisabled = !IsPlacingBoats || PositionState.MISS.Equals(playerPositionData.State) || PositionState.HIT.Equals(playerPositionData.State);
+
+            <button @onclick="(e) => OnMouseClickHandler(e, playerPosition)" class="cell"
+                    @ref="cellRef"
+                    disabled="@isDisabled"
+                    style="background-color: @(cellBackgroundColor);
+                           @(IsHighlighted(row, col) ? "outline: 2px solid yellow;" : "");
+                           @(ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]) && IsHighlighted(row, col) ? "outline: 2px solid red;" : "")">
+            </button>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public PositionData[][] PositionsData { get; set; }
+    public User User { get; set; }
+    [Parameter]
+    public bool IsPlacingBoats { get; set; }
+
+    private bool isVertical = false;
+    private int indexBoat = 0;
+    private IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
+    private int mouseRow = -1;
+    private int mouseCol = -1;
+    private ElementReference playerGridRef;
+    private ElementReference cellRef;
+    private double gridX, gridY;
+
+    [Parameter]
+    public EventCallback OnTogglePlacingBoats { get; set; }
+
+
+    protected override async void OnInitialized()
+    {
+        GameEventService.OnGameRestarted += HandleGameRestarted;
+        User = await UserService.LoadPlayerProfile();
+    }
+
+    private void HandleGameRestarted()
+    {
+        isVertical = false;
+        indexBoat = 0;
+        sizes = new List<int> { 2, 3, 3, 4, 5 };
+        mouseRow = -1;
+        mouseCol = -1;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        GameEventService.OnGameRestarted -= HandleGameRestarted;
+    }
+
+    private bool CheckBoatPlacementValidity()
+    {
+        if (ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]))
+        {
+            Console.WriteLine("Les bateaux se chevauchent !");
+            return false;
+        }
+        return true;
+    }
+
+    private async Task PlaceBoat(MouseEventArgs e)
+    {
+        if (!IsPlacingBoats) return;
+
+        if (gridX == 0 && gridY == 0)
+        {
+            var rect = await JsRuntime.InvokeAsync<BoundingClientRect>("getGridBoundingRect", playerGridRef);
+            gridX = rect.Left;
+            gridY = rect.Top;
+        }
+
+        var cellSize = await JsRuntime.InvokeAsync<int>("getCellSize", cellRef);
+        int relativeX = (int)(e.ClientX - gridX);
+        int relativeY = (int)(e.ClientY - gridY);
+
+        mouseRow = (relativeY < 0 || relativeY / cellSize >= PositionsData.Length) ? -1 : relativeY / cellSize;
+        mouseCol = (relativeX < 0 || relativeX / cellSize >= PositionsData.Length) ? -1 : relativeX / cellSize;
+    }
+
+    public async Task OnMouseMoveHandler(MouseEventArgs e) => await PlaceBoat(e);
+
+    private string GetCellBackgroundColor(Position playerPosition, int col, int row)
+    {
+        string color = "transparent";
+        if (GameService.IsBoatAtPosition(playerPosition))
+            color = "lightgray";
+        if (PositionState.MISS.Equals(PositionsData[col][row].State))
+            color = "blue";
+        if (PositionState.HIT.Equals(PositionsData[col][row].State))
+            color = "red";
+
+        return color;
+    }
+
+    private bool ArePositionsOverlapping(int mouseRow, int mouseCol, bool isVertical, int boatSize)
+    {
+        return GameService.boats.Any(boat =>
+            boat.Positions.Any(existingPosition =>
+            Enumerable.Range(0, boatSize).Any(i =>
+                existingPosition.X == (isVertical ? mouseCol : mouseCol + i) &&
+                existingPosition.Y == (isVertical ? mouseRow + i : mouseRow)
+            )));
+    }
+
+    public async Task OnMouseClickHandler(MouseEventArgs e, Position position)
+    {
+        if (!IsPlacingBoats || !CanPlaceBoat()) return;
+
+        var boatPositions = GetBoatPositions(position);
+        if (ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]))
+        {
+            Console.WriteLine("Les bateaux se chevauchent !");
+            return;
+        }
+
+        GameService.PlaceBoat(boatPositions);
+        if (indexBoat == sizes.Count - 1)
+        {
+            await GameService.PlaceBoats();
+            TogglePlacingBoats();
+        }
+        else
+        {
+            indexBoat++;
+        }
+    }
+
+    private List<Position> GetBoatPositions(Position position)
+    {
+        int size = sizes[indexBoat];
+        var boatPositions = new List<Position>();
+
+        for (int i = 0; i < size; i++)
+        {
+            boatPositions.Add(isVertical ? new Position(position.X, position.Y + i) : new Position(position.X + i, position.Y));
+        }
+
+        return boatPositions;
+    }
+
+    public void OnMouseWheelHandler(WheelEventArgs e) => isVertical = !isVertical;
+
+    private bool IsHighlighted(int row, int col) =>
+        mouseRow != -1 && mouseCol != -1 &&
+        IsPlacingBoats && CanPlaceBoat() &&
+        ((isVertical && col == mouseCol && row >= mouseRow && row < mouseRow + sizes[indexBoat]) ||
+        (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
+
+    private bool CanPlaceBoat() =>
+        isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < PositionsData.Length :
+                     mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < PositionsData.Length;
+
+    private void TogglePlacingBoats() => OnTogglePlacingBoats.InvokeAsync();
+
+    public class BoundingClientRect
+    {
+        public double Top { get; set; }
+        public double Left { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
+    }
+}
+
+<script>
+    window.getGridBoundingRect = function (gridElement) {
+        if (!gridElement) return null;
+        return gridElement.getBoundingClientRect();
+    };
+    window.getCellSize = function (cellElement) {
+        if (!cellElement) return null;
+        const style = getComputedStyle(cellElement);
+        return parseInt(style.width);
+    };
+</script>
+
+<style>
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+        grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+        gap: 5px;
+        background-color: #dce7f1;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        width: max-content;
+        height: max-content;
+        max-width: calc(var(--cell-size) * 15 + 100px);
+        max-height: calc(var(--cell-size) * 15 + 100px);
+    }
+
+    .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        border: 1px solid #b0c4de;
+        border-radius: 4px;
+        position: relative;
+    }
+
+        .cell:not([disabled]):hover {
+            background-color: #7fc9ff;
+        }
+
+        .cell:not([disabled]) {
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+    .boat-symbol {
+        font-weight: bold;
+        color: darkblue;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+</style>

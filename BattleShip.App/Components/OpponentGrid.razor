@@ -1,0 +1,76 @@
+﻿@inject IJSRuntime JS
+<div class="grid" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
+    @for (int row = 0; row < PositionsData.Length; row++)
+    {
+        @for (int col = 0; col < PositionsData[0].Length; col++)
+        {
+            PositionData opponentPositionData = PositionsData[col][row];
+            Position opponentPosition = opponentPositionData.Position;
+
+            string cellBackGroundColor = GridUtils.GetCellBackgroundColor(opponentPositionData);
+
+            <button class="cell" @onclick="() => OnAttack.InvokeAsync(opponentPosition)"
+            style="background-color: @(cellBackGroundColor)"
+            disabled="@(PositionState.MISS.Equals(opponentPositionData.State) || PositionState.HIT.Equals(opponentPositionData.State) || IsPlacingBoats)">
+            </button>
+        }
+    }
+</div>
+
+<div class="profile">
+    <div class="profile-details">
+        <img src="/Public/placeholder.jpg" alt="Profile Picture" class="profile-image" />
+        <p>IA</p>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public PositionData[][] PositionsData { get; set; }
+    [Parameter]
+    public bool IsPlacingBoats { get; set; }
+    [Parameter] public EventCallback<Position> OnAttack { get; set; }
+}
+
+<style>
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+        grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+        gap: 5px;
+        background-color: #dce7f1;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        width: max-content; 
+        height: max-content;
+        max-width: calc(var(--cell-size) * 15 + 100px);
+        max-height: calc(var(--cell-size) * 15 + 100px);
+    }
+
+    .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        border: 1px solid #b0c4de;
+        border-radius: 4px;
+        position: relative;
+    }
+
+        .cell:not([disabled]):hover {
+            background-color: #7fc9ff;
+        }
+
+        .cell:not([disabled]) {
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+    .boat-symbol {
+        font-weight: bold;
+        color: darkblue;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+</style>

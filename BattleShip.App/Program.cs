@@ -36,6 +36,8 @@ builder.Services.AddScoped<IGameApiService, GameApiService>();
 builder.Services.AddScoped<IGameStateService, GameStateService>();
 builder.Services.AddScoped<IGameUIService, GameUIService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IGameMultiplayerService, GameMultiplayerService>();
+builder.Services.AddScoped<SignalRService>();
 
 builder.Services.AddBlazoredSessionStorage();
 

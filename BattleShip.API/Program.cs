@@ -66,7 +66,10 @@ app.UseAuthorization();
 app.UseHttpsRedirection();
 
 app.MapGrpcService<GameGrpcService>().EnableGrpcWeb();
-app.MapHub<GameHub>("/gameHub");
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapHub<GameHub>("/gameHub");
+});
 
 var gameMethodsGroup = app.MapGroup("/api/game/");
 
