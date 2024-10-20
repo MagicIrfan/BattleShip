@@ -17,6 +17,7 @@ public interface IGameStateMultiplayerService
     bool IsPlacingBoat { get; set; }
     PlayerInfo Player { get; set; }
     PlayerInfo Opponent { get; set; }
+    bool IsReady { get; set; }
     void InitializeGame(Guid? gameId);
     void UpdateOpponentGameState(AttackModel.AttackResponse attackResponse);
     void UpdatePlayerGameState(AttackModel.AttackResponse attackResponse);
@@ -30,6 +31,7 @@ public class GameStateMultiplayerService : IGameStateMultiplayerService
     public required Grid OpponentGrid { get; set; }
     public required List<string> Historique { get; set; } = new List<string>();
     public required bool IsPlacingBoat { get; set; } = true;
+    public required bool IsReady { get; set; } = false;
     public string TurnStatus { get; set; }
     public PlayerInfo Player { get; set; }
     public PlayerInfo Opponent { get; set; }
@@ -42,6 +44,7 @@ public class GameStateMultiplayerService : IGameStateMultiplayerService
         Boats.Clear();
         Historique.Clear();
         IsPlacingBoat = true;
+        IsReady = false;
         TurnStatus = "Les joueurs doivent placer leurs bateaux";
     }
 

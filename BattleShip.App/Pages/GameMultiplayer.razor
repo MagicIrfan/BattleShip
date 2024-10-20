@@ -13,90 +13,136 @@
 <main>
     @if (GameService.GetPlayerGrid() != null && GameService.GetOpponentGrid() != null && GameId != null)
     {
-        <div class="container">
-            @if (GameService.GetPlayer() != null)
-            {
-                <GameProfile User="@GameService.GetPlayer()"></GameProfile>
-            }
+        <div class="game-status-container">
+            <p class="game-status-text">@GameService.GetTurnStatus()</p>
+        </div>
 
-            <p>@GameService.GetTurnStatus()</p>
-            <div class="grids">
-                <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetPlayerGrid().PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGridMultiplayer>
+        <div class="game-container">
+            <div class="profiles-container">
+                <div class="player-profile">
+                    @if (GameService.GetPlayer() != null)
+                    {
+                        <GameProfile User="@GameService.GetPlayer()" />
+                    }
+                    else
+                    {
+                        <div class="loader"></div>
+                    }
+                </div>
+
+                <div class="opponent-profile">
+                    @if (GameService.GetOpponent() != null)
+                    {
+                        <GameProfile User="@GameService.GetOpponent()" />
+                    }
+                    else
+                    {
+                        <div class="loader"></div>
+                    }
+                </div>
+            </div>
+
+            <div class="grids-container">
+                <PlayerGridMultiplayer IsPlacingBoats="@GameService.IsPlacingBoat()"
+                                       PositionsData="GameService.GetPlayerGrid().PositionsData"
+                                       OnTogglePlacingBoats="TogglePlacingBoats" />
 
                 <div class="historique-container">
+                    <h2>Historique</h2>
                     @foreach (var item in GameService.GetHistorique())
                     {
                         <p>@item</p>
                     }
                 </div>
 
-                <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetOpponentGrid().PositionsData" OnAttack="HandleAttack"></OpponentGrid>
+                <OpponentGridMultiplayer
+                                  PositionsData="GameService.GetOpponentGrid().PositionsData"
+                                  OnAttack="HandleAttack"
+                                  IsReady="@GameService.IsReady()" />
             </div>
-            @if (GameService.GetOpponent() != null)
-            {
-                <GameProfile User="@GameService.GetOpponent()"></GameProfile>
-            }
         </div>
     }
     else
     {
-        <p>Chargement ...</p>
+        <p class="loading">Chargement...</p>
     }
 </main>
 
 <style>
-    .container{
-        width:100%;
-        display:flex;
-        flex-direction:row;
-        align-items:center;
-        justify-content:center;
-    }
-    .grids {
+    .game-container {
         display: flex;
-        flex-grow: 1;
-        overflow: hidden;
-        position: relative;
-        gap: 50px;
-        justify-content: center;
+        flex-direction: column;
         align-items: center;
+        justify-content: space-around;
+        width: 100%;
+    }
+
+    .game-status-container {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .game-status-text {
+        font-size: 2.5rem;
+        color: white;
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .profiles-container {
+        display: flex;
+        justify-content: center;
+        gap: 100px;
+        width: 100%;
+        margin-bottom: 40px;
+    }
+
+    .player-profile, .opponent-profile {
+        width: 250px;
+        min-height: 300px;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center; 
+    }
+
+    .grids-container {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 30px;
+        width: 100%;
+        min-height: 400px;
     }
 
     .historique-container {
-        text-align:center;
-        background-color: #f9f9f9;
-        border: 1px solid #d1d1d1;
+        width: 320px;
+        max-height: 480px;
+        overflow-y: auto;
+        background-color: #fff;
         border-radius: 10px;
         padding: 20px;
-        overflow-y: auto;
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        width:320px;
-        max-height:480px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        min-height: 300px;
     }
 
-        .historique-container h2 {
-            font-size: 1.2em;
-            margin-bottom: 15px;
-            color: #444;
-            font-weight: bold;
-        }
+    .loader {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
 
-        .historique-container p {
-            font-size: 0.9em;
-            margin: 8px 0;
-            line-height: 1.5;
-            color: #555;
-            padding: 8px;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-            .historique-container p:hover {
-                background-color: #e6f7ff;
-            }
-    
+    .loading {
+        text-align: center;
+        color: white;
+        font-size: 1.5rem;
+    }
 </style>
 
 @code {

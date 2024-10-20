@@ -31,6 +31,7 @@ public interface IGameMultiplayerService
     bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize);
     List<Position> GetBoatPositions(Position position, bool isVertical, int size);
     void TogglePlacingBoat();
+    bool IsReady();
 }
 
 public class GameMultiplayerService : IGameMultiplayerService
@@ -92,7 +93,7 @@ public class GameMultiplayerService : IGameMultiplayerService
 
         HubConnection.On("BothPlayersReady", async () =>
         {
-            _gameStateMultiplayerService.IsPlacingBoat = false;
+            _gameStateMultiplayerService.IsReady = true;
             await HubConnection.SendAsync("CheckPlayerTurn", _gameStateMultiplayerService.GameId);
             await _eventService.NotifyChange();
         });
@@ -239,5 +240,10 @@ public class GameMultiplayerService : IGameMultiplayerService
     public void TogglePlacingBoat()
     {
         _gameStateMultiplayerService.IsPlacingBoat = false;
+    }
+
+    public bool IsReady()
+    {
+        return _gameStateMultiplayerService.IsReady;
     }
 }

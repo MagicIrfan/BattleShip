@@ -1,37 +1,38 @@
 ﻿@inject IJSRuntime JS
+
 <div class="grid" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
-    @for (int row = 0; row < PositionsData.Length; row++)
+    @foreach (var row in Enumerable.Range(0, PositionsData.Length))
     {
-        @for (int col = 0; col < PositionsData[0].Length; col++)
+        @foreach (var col in Enumerable.Range(0, PositionsData[0].Length))
         {
-            PositionData opponentPositionData = PositionsData[col][row];
-            Position opponentPosition = opponentPositionData.Position;
+            var opponentPositionData = PositionsData[col][row];
+            var opponentPosition = opponentPositionData.Position;
 
-            string cellBackGroundColor = GridUtils.GetCellBackgroundColor(opponentPositionData);
+            string cellBackgroundColor = GridUtils.GetCellBackgroundColor(opponentPositionData);
+            bool isDisabled = PositionState.MISS.Equals(opponentPositionData.State) ||
+            PositionState.HIT.Equals(opponentPositionData.State) ||
+            IsPlacingBoats || !IsReady;
 
-            <button class="cell" @onclick="() => OnAttack.InvokeAsync(opponentPosition)"
-                    style="background-color: @(cellBackGroundColor)"
-                    disabled="@(PositionState.MISS.Equals(opponentPositionData.State) || PositionState.HIT.Equals(opponentPositionData.State) || IsPlacingBoats)">
+            <button class="cell"
+                    @onclick="() => OnAttack.InvokeAsync(opponentPosition)"
+                    style="background-color: @(cellBackgroundColor)"
+                    disabled="@isDisabled">
             </button>
         }
     }
 </div>
 
-<div class="profile">
-    <div class="profile-details">
-        <img src="/Public/placeholder.jpg" alt="Profile Picture" class="profile-image" />
-        <p>IA</p>
-    </div>
-</div>
-
 @code {
     [Parameter]
     public PositionData[][] PositionsData { get; set; }
+
     [Parameter]
     public bool IsPlacingBoats { get; set; }
-    [Parameter] public EventCallback<Position> OnAttack { get; set; }
     [Parameter]
-    public bool IsMultiplayer { get; set; }
+    public bool IsReady { get; set; }
+
+    [Parameter]
+    public EventCallback<Position> OnAttack { get; set; }
 }
 
 <style>
@@ -56,15 +57,12 @@
         border: 1px solid #b0c4de;
         border-radius: 4px;
         position: relative;
+        transition: transform 0.2s, background-color 0.2s;
     }
 
         .cell:not([disabled]):hover {
             background-color: #7fc9ff;
-        }
-
-        .cell:not([disabled]) {
             cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
         }
 
     .boat-symbol {
