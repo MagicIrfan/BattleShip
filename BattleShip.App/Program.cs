@@ -8,6 +8,7 @@ using BattleShip;
 using BattleShip.Services;
 using Microsoft.AspNetCore.SignalR.Client;
 using BattleShip.Services.Game;
+using BattleShip.Services.Multiplayer;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");

@@ -2,6 +2,7 @@
 
 using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Models.Response;
 
 public interface IGameStateService
 {

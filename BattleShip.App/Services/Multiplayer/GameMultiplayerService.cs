@@ -1,7 +1,9 @@
-﻿namespace BattleShip.Services;
+﻿namespace BattleShip.Services.Multiplayer;
 
 using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Models.State;
+using BattleShip.Services;
 using BattleShip.Services.Game;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Components;
@@ -31,9 +33,6 @@ public interface IGameMultiplayerService
 }
 public class GameMultiplayerService : IGameMultiplayerService
 {
-    private HubConnection HubConnection;
-    private readonly ITokenService _tokenService;
-    private readonly IUserService _userService;
     public Guid gameId { get; set; }
     public required List<Boat> boats { get; set; } = new List<Boat>();
     public required Grid playerGrid { get; set; }
@@ -45,12 +44,16 @@ public class GameMultiplayerService : IGameMultiplayerService
     public PlayerInfo Opponent { get; set; }
     public event Func<Task>? OnStateChanged;
 
+    private HubConnection HubConnection;
+    private readonly ITokenService _tokenService;
+    private readonly IUserService _userService;
+    private readonly IGameEventService gameEventService;
     private readonly IGameModalService _modalService;
     private readonly NavigationManager _navManager;
     private readonly IGameEventService _eventService;
     private readonly SignalRService _signalRService;
 
-    public GameMultiplayerService(ITokenService tokenService , IGameModalService modalService, NavigationManager navManager, IGameEventService eventService, SignalRService signalRService, IUserService userService)
+    public GameMultiplayerService(ITokenService tokenService, IGameModalService modalService, NavigationManager navManager, IGameEventService eventService, SignalRService signalRService, IUserService userService)
     {
         _tokenService = tokenService;
         _modalService = modalService;
@@ -64,7 +67,7 @@ public class GameMultiplayerService : IGameMultiplayerService
     {
         if (OnStateChanged != null)
         {
-            await OnStateChanged.Invoke(); 
+            await OnStateChanged.Invoke();
         }
     }
 
@@ -203,8 +206,6 @@ public class GameMultiplayerService : IGameMultiplayerService
 
     public async Task PlaceBoats()
     {
-        Console.WriteLine($"{HubConnection.State}");
-        Console.WriteLine($"{boats.Count} {gameId}");
         await HubConnection.SendAsync("PlaceBoat", boats, gameId);
     }
 

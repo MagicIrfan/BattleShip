@@ -1,4 +1,5 @@
 ﻿using BattleShip.Models;
+using BattleShip.Models.State;
 
 namespace BattleShip.Utils;
 
