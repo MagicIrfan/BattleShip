@@ -9,15 +9,20 @@
         {
             var playerPositionData = PositionsData[col][row];
             var playerPosition = playerPositionData.Position;
-            string cellBackgroundColor = GetCellBackgroundColor(playerPosition, col, row);
             bool isDisabled = !IsPlacingBoats || PositionState.MISS.Equals(playerPositionData.State) || PositionState.HIT.Equals(playerPositionData.State);
+            bool hasBoat = GameService.IsBoatAtPosition(playerPosition); 
 
             <button @onclick="(e) => OnMouseClickHandler(e, playerPosition)" class="cell"
                     @ref="cellRef"
                     disabled="@isDisabled"
-                    style="background-color: @(cellBackgroundColor);
+                    style="background-color: @(hasBoat && !PositionState.HIT.Equals(playerPositionData.State) ? "transparent" : GetCellBackgroundColor(playerPosition, col, row));
                            @(IsHighlighted(row, col) ? "outline: 2px solid yellow;" : "");
                            @(GameService.ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]) && IsHighlighted(row, col) ? "outline: 2px solid red;" : "")">
+                @if (hasBoat)
+                {
+                    var boatImageUrl = GetBoatImageUrlForPosition(playerPosition);
+                    <img src="@boatImageUrl" alt="Boat" style="width: 100%; height: 100%; object-fit: contain;" />
+                }
             </button>
         }
     }
@@ -32,6 +37,8 @@
     private bool isVertical = false;
     private int indexBoat = 0;
     private IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
+    private Dictionary<string, string> BoatImages = new Dictionary<string, string>();
+
     private int mouseRow = -1;
     private int mouseCol = -1;
     private ElementReference playerGridRef;
@@ -40,6 +47,34 @@
 
     [Parameter]
     public EventCallback OnTogglePlacingBoats { get; set; }
+
+    public string GetBoatImageUrl(int boatIndex)
+    {
+        switch (boatIndex)
+        {
+            case 0:
+                return "/Public/sharpedo.png";
+            case 1:
+                return "/Public/whiscash.png";
+            case 2:
+                return "/Public/whiscash.png";
+            case 3:
+                return "/Public/gyarados-f.png";
+            case 4:
+                return "/Public/wailord.png";
+            default:
+                return string.Empty;
+        }
+    }
+
+    private string GetBoatImageUrlForPosition(Position position)
+    {
+        if (BoatImages.TryGetValue($"{position.X}, {position.Y}", out var imageUrl))
+        {
+            return imageUrl; 
+        }
+        return string.Empty;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -108,8 +143,6 @@
     private string GetCellBackgroundColor(Position playerPosition, int col, int row)
     {
         string color = "transparent";
-        if (GameService.IsBoatAtPosition(playerPosition))
-            color = "lightgray";
         if (PositionState.MISS.Equals(PositionsData[col][row].State))
             color = "blue";
         if (PositionState.HIT.Equals(PositionsData[col][row].State))
@@ -147,6 +180,10 @@
 
         var boatPositions = GameService.GetBoatPositions(position, isVertical, sizes[indexBoat]);
         GameService.PlaceBoat(boatPositions);
+        foreach (var boatPosition in boatPositions)
+        {
+            BoatImages[$"{boatPosition.X}, {boatPosition.Y}"] = GetBoatImageUrl(indexBoat);
+        }
 
         if (indexBoat == sizes.Count - 1)
         {
