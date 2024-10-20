@@ -48,6 +48,8 @@ public class GameMultiplayerService : IGameMultiplayerService
     private readonly ITokenService _tokenService;
     private readonly IUserService _userService;
     private readonly IGameEventService gameEventService;
+    private readonly IBoatPlacementService _boatPlacementService;
+    private readonly IGameUIService _gameUIService;
     private readonly IGameModalService _modalService;
     private readonly NavigationManager _navManager;
     private readonly IGameEventService _eventService;
