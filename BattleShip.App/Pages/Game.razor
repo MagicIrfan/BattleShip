@@ -13,18 +13,25 @@
 <main>
     @if (GameService.GetGameId() != null)
     {
-        <button @onclick="OnRollback">Rollback</button>
+        <button @onclick="OnRollback" disabled="@GameService.AreGridsEmpty()">Rollback</button>
         <div class="grids">
-            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetPlayerGrid().PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
+            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat()"
+                        PositionsData="GameService.GetPlayerGrid().PositionsData"
+                        OnTogglePlacingBoats="TogglePlacingBoats">
+            </PlayerGrid>
 
             <div class="historique-container">
+                <h2>Historique</h2>
                 @foreach (var item in GameService.GetHistorique())
                 {
                     <p>@item</p>
                 }
             </div>
 
-            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetOpponentGrid().PositionsData" OnAttack="HandleAttack"></OpponentGrid>
+            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()"
+                          PositionsData="GameService.GetOpponentGrid().PositionsData"
+                          OnAttack="HandleAttack">
+            </OpponentGrid>
         </div>
     }
     else
@@ -45,17 +52,17 @@
     }
 
     .historique-container {
-        text-align:center;
+        text-align: center;
         background-color: #f9f9f9;
         border: 1px solid #d1d1d1;
         border-radius: 10px;
         padding: 20px;
-        overflow-y: auto; 
+        overflow-y: auto;
         flex-grow: 1;
         display: flex;
-        flex-direction: column; 
-        width:320px;
-        max-height:480px;
+        flex-direction: column;
+        width: 320px;
+        max-height: 480px;
     }
 
         .historique-container h2 {
@@ -81,10 +88,7 @@
 </style>
 
 @code {
-    private void TogglePlacingBoats()
-    {
-        GameService.TogglePlacingBoat();
-    }
+    private void TogglePlacingBoats() => GameService.TogglePlacingBoat();
 
     private async Task HandleAttack(Position position)
     {

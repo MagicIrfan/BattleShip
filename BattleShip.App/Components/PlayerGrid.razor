@@ -3,8 +3,8 @@
 @inject IGameEventService GameEventService
 @inject IUserService UserService
 
-
-<!--@if (User != null)
+<!-- Commenté pour simplification
+@if (User != null)
 {
     <div class="profile">
         <div class="profile-details">
@@ -12,7 +12,8 @@
             <p>@User.Name</p>
         </div>
     </div>
-}-->
+}
+-->
 
 <div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
     @foreach (var row in Enumerable.Range(0, PositionsData.Length))
@@ -47,15 +48,14 @@
     private IList<int> sizes = new List<int> { 2, 3, 3, 4, 5 };
     private int mouseRow = -1;
     private int mouseCol = -1;
-    private ElementReference playerGridRef; 
+    private ElementReference playerGridRef;
     private ElementReference cellRef;
     private double gridX, gridY;
 
     [Parameter]
     public EventCallback OnTogglePlacingBoats { get; set; }
 
-
-    protected override async void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         GameEventService.OnGameRestarted += HandleGameRestarted;
         User = await UserService.LoadPlayerProfile();
@@ -80,8 +80,8 @@
     {
         if (!IsPlacingBoats) return;
 
-        var gridPadding = 10;  
-        var cellGap = 5;      
+        var gridPadding = 10;
+        var cellGap = 5;
 
         if (gridX == 0 && gridY == 0)
         {
@@ -121,14 +121,15 @@
     {
         if (!IsPlacingBoats || !CanPlaceBoat()) return;
 
-        var boatPositions = GameService.GetBoatPositions(position, isVertical, sizes[indexBoat]);
-        if (GameService.ArePositionsOverlapping(mouseRow, mouseCol, isVertical, sizes[indexBoat]))
+        if (!CanPlaceBoatAtCurrentPosition(position, isVertical, sizes[indexBoat]))
         {
             Console.WriteLine("Les bateaux se chevauchent !");
             return;
         }
 
+        var boatPositions = GameService.GetBoatPositions(position, isVertical, sizes[indexBoat]);
         GameService.PlaceBoat(boatPositions);
+
         if (indexBoat == sizes.Count - 1)
         {
             await GameService.PlaceBoats();
@@ -152,6 +153,11 @@
     isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < PositionsData.Length :
                  mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < PositionsData.Length;
 
+    private bool CanPlaceBoatAtCurrentPosition(Position position, bool isVertical, int boatSize)
+    {
+        return !GameService.ArePositionsOverlapping(mouseRow, mouseCol, isVertical, boatSize);
+    }
+
     private void TogglePlacingBoats() => OnTogglePlacingBoats.InvokeAsync();
 
     public class BoundingClientRect
@@ -163,18 +169,6 @@
     }
 }
 
-<script>
-    window.getGridBoundingRect = function (gridElement) {
-        if (!gridElement) return null;
-        return gridElement.getBoundingClientRect();
-    };
-    window.getCellSize = function (cellElement) {
-        if (!cellElement) return null;
-        const style = getComputedStyle(cellElement);
-        return parseInt(style.width);
-    };
-</script>
-
 <style>
     .grid {
         display: grid;
@@ -185,8 +179,8 @@
         padding: 10px;
         border-radius: 10px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        width: max-content; 
-        height: max-content; 
+        width: max-content;
+        height: max-content;
         max-width: calc(var(--cell-size) * 15 + 100px);
         max-height: calc(var(--cell-size) * 15 + 100px);
     }
@@ -217,3 +211,16 @@
         transform: translate(-50%, -50%);
     }
 </style>
+
+<script>
+    window.getGridBoundingRect = function (gridElement) {
+        if (!gridElement) return null;
+        return gridElement.getBoundingClientRect();
+    };
+
+    window.getCellSize = function (cellElement) {
+        if (!cellElement) return null;
+        const style = getComputedStyle(cellElement);
+        return parseInt(style.width);
+    };
+</script>

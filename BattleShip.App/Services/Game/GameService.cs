@@ -1,4 +1,5 @@
-﻿using BattleShip.Models;
+﻿using BattleShip.Components;
+using BattleShip.Models;
 using BattleShip.Services.Game;
 namespace BattleShip.Services;
 
@@ -22,6 +23,7 @@ public interface IGameService
     bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData);
     bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize);
     List<Position> GetBoatPositions(Position position, bool isVertical, int size);
+    bool AreGridsEmpty();
 }
 
 
@@ -155,9 +157,38 @@ public class GameService : IGameService
         return _boatPlacementService.ArePositionsOverlapping(row, col, isVertical, boatSize, GetBoats());
     }
 
-    List<Position> GetBoatPositions(Position position, bool isVertical, int size)
+    public List<Position> GetBoatPositions(Position position, bool isVertical, int size)
     {
         return _boatPlacementService.GetBoatPositions(position, isVertical, size);
+    }
+
+    public bool AreGridsEmpty()
+    {
+        var playerGrid = GetPlayerGrid().PositionsData;
+        var opponentGrid = GetPlayerGrid().PositionsData;
+
+        if (playerGrid == null || !playerGrid.Any() || opponentGrid == null || !opponentGrid.Any())
+        {
+            return true;
+        }
+
+        foreach (var row in playerGrid)
+        {
+            if (row.Any(cell => cell.State != null))
+            {
+                return false; 
+            }
+        }
+
+        foreach (var row in opponentGrid)
+        {
+            if (row.Any(cell => cell.State != null))
+            {
+                return false; 
+            }
+        }
+
+        return true;
     }
 }
 
