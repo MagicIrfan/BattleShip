@@ -1,19 +1,6 @@
 ﻿@inject IGameService GameService
 @inject IJSRuntime JsRuntime
 @inject IGameEventService GameEventService
-@inject IUserService UserService
-
-<!-- Commenté pour simplification
-@if (User != null)
-{
-    <div class="profile">
-        <div class="profile-details">
-            <img src="@User.Profile" alt="Profile Picture" class="profile-image" />
-            <p>@User.Name</p>
-        </div>
-    </div>
-}
--->
 
 <div class="grid" @onmousemove="OnMouseMoveHandler" @onwheel="OnMouseWheelHandler" @ref="playerGridRef" style="--grid-size: @(PositionsData.Length); --cell-size: 40px;">
     @foreach (var row in Enumerable.Range(0, PositionsData.Length))
@@ -39,7 +26,6 @@
 @code {
     [Parameter]
     public PositionData[][] PositionsData { get; set; }
-    public User User { get; set; }
     [Parameter]
     public bool IsPlacingBoats { get; set; }
 
@@ -58,7 +44,6 @@
     protected override async Task OnInitializedAsync()
     {
         GameEventService.OnGameRestarted += HandleGameRestarted;
-        User = await UserService.LoadPlayerProfile();
     }
 
     private void HandleGameRestarted()

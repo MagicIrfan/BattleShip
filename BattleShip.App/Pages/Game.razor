@@ -3,9 +3,10 @@
 @inject IGameEventService GameEventService
 @inject IJSRuntime JsRuntime
 @inject IModalService Modal
-@inject ITokenService TokenService
+@inject IUserService UserService
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
+
 @attribute [Authorize]
 
 <PageTitle>BattleShip</PageTitle>
@@ -13,6 +14,7 @@
 <main>
     @if (GameService.GetGameId() != null)
     {
+        <GameProfile User="@User"></GameProfile>
         <button @onclick="OnRollback" disabled="@GameService.AreGridsEmpty()">Rollback</button>
         <div class="grids">
             <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat()"
@@ -33,6 +35,7 @@
                           OnAttack="HandleAttack">
             </OpponentGrid>
         </div>
+        <GameProfile></GameProfile>
     }
     else
     {
@@ -88,6 +91,7 @@
 </style>
 
 @code {
+    public User User { get; set; }
     private void TogglePlacingBoats() => GameService.TogglePlacingBoat();
 
     private async Task HandleAttack(Position position)
@@ -100,6 +104,7 @@
     {
         await GameService.StartGame();
         GameEventService.OnStateChanged += async () => await InvokeAsync(StateHasChanged);
+        User = await UserService.LoadPlayerProfile();
     }
 
     private async Task OnRollback()

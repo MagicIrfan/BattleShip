@@ -26,7 +26,7 @@ public class UserService : IUserService
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception("Failed to load player profile");
+                throw new Exception("Echec du chargement du profil utilisateur");
             }
 
             var content = await response.Content.ReadFromJsonAsync<UserProfileResponse>();
@@ -38,10 +38,8 @@ public class UserService : IUserService
         }
         catch (Exception ex)
         {
-            // Remplacez Console.WriteLine par un système de journalisation
-            Console.WriteLine($"An error occurred while loading the player profile: {ex.Message}");
-            // Vous pouvez aussi relancer l'exception ou retourner null selon le cas d'utilisation
-            throw; // Optionnel, selon la stratégie de gestion des erreurs souhaitée
+            Console.WriteLine($"Erreur: {ex.Message}");
+            throw; 
         }
     }
 

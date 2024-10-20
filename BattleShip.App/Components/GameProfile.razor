@@ -1,0 +1,22 @@
+﻿@if (User != null)
+{
+    <div class="profile">
+        <div class="profile-details">
+            <img src="@User.Profile" alt="Photo de profil" class="profile-image" />
+            <p>@User.Name</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="profile">
+        <div class="profile-details">
+            <img src="/Public/placeholder.jpg" alt="Photo de profil" class="profile-image" />
+            <p>IA</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public User? User { get; set; }
+}
