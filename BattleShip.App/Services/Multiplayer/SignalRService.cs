@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
 
-namespace BattleShip.Services;
+namespace BattleShip.Services.Multiplayer;
 
 public class SignalRService
 {

@@ -7,34 +7,32 @@
 @inject SignalRService _signalRService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
-@	using System.Net.Http.Headers
-@	using Microsoft.AspNetCore.SignalR.Client
 @attribute [Authorize]
 
 <main>
-    @if (GameService.playerGrid != null && GameService.opponentGrid != null && GameId != null)
+    @if (GameService.GetPlayerGrid() != null && GameService.GetOpponentGrid() != null && GameId != null)
     {
-        @if (GameService.Player != null)
+        @if (GameService.GetPlayer() != null)
         {
-            <GameProfile User="@GameService.Player"></GameProfile>
+            <GameProfile User="@GameService.GetPlayer()"></GameProfile>
         }
         
-        <p>@GameService.TurnStatus</p>
+        <p>@GameService.GetTurnStatus()</p>
         <div class="grids">
-            <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGridMultiplayer>
+            <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetPlayerGrid().PositionsData"></PlayerGridMultiplayer>
 
             <div class="historique-container">
-                @foreach (var item in GameService.historique)
+                @foreach (var item in GameService.GetHistorique())
                 {
                     <p>@item</p>
                 }
             </div>
 
-            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></OpponentGrid>
+            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetOpponentGrid().PositionsData" OnAttack="HandleAttack"></OpponentGrid>
         </div>
-        @if (GameService.Opponent != null)
+        @if (GameService.GetOpponent() != null)
         {
-            <GameProfile User="@GameService.Opponent"></GameProfile>
+            <GameProfile User="@GameService.GetOpponent()"></GameProfile>
         }
     }
     else
@@ -98,7 +96,6 @@
         var guidValue = Guid.Parse(GameId);
         await GameService.CreateHubConnection();
         await GameService.StartGame(guidValue);
-        GameService.OnStateChanged += async () => await InvokeAsync(StateHasChanged);
         Navigation.LocationChanged += OnLocationChanged;
         await JS.InvokeVoidAsync("window.addEventListener", "beforeunload", EventCallback.Factory.Create(this, async () => await GameService.LeaveGame()));
     }
@@ -112,11 +109,6 @@
     {
         await GameService.Attack(position);
         StateHasChanged();
-    }
-
-    private void TogglePlacingBoats()
-    {
-        GameService.IsPlacingBoat = false;
     }
 
     public void Dispose()

@@ -29,14 +29,14 @@ public interface IGameService
 
 public class GameService : IGameService
 {
-    private readonly IGameStateService _stateService;
+    private readonly IGameStateSoloService _stateService;
     private readonly IGameApiService _apiService;
     private readonly IGameUIService _uiService;
     private readonly IGameEventService _gameEventService;
     private readonly IBoatPlacementService _boatPlacementService;
 
     public GameService(
-        IGameStateService stateService,
+        IGameStateSoloService stateService,
         IGameApiService apiService,
         IGameUIService uiService,
         IGameEventService gameEventService,
@@ -86,12 +86,12 @@ public class GameService : IGameService
 
     public void PlaceBoat(List<Position> positions)
     {
-        _stateService.PlaceBoat(positions);
+        _boatPlacementService.PlaceBoat(GetBoats(),positions);
     }
 
     public bool IsBoatAtPosition(Position position)
     {
-        return _stateService.IsBoatAtPosition(position);
+        return _boatPlacementService.IsBoatAtPosition(GetBoats(),position);
     }
 
     public async Task Rollback()

@@ -1,5 +1,6 @@
 ﻿using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Models.Request;
 using BattleShip.Models.Response;
 using BattleShip.Pages;
 using System.Text.Json;

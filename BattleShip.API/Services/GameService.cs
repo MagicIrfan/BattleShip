@@ -1,6 +1,8 @@
 ﻿using System.Security.Claims;
 using BattleShip.API.Helpers;
 using BattleShip.Models;
+using BattleShip.Models.Request;
+using BattleShip.Models.State;
 using BattleShip.Pages;
 using FluentValidation;
 

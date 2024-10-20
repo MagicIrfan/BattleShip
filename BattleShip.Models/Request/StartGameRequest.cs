@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 
-namespace BattleShip.Models;
+namespace BattleShip.Models.Request;
 
 public class StartGameRequest(int? sizeGrid, int difficulty)
 {

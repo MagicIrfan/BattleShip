@@ -5,98 +5,81 @@ using BattleShip.Models;
 using BattleShip.Models.State;
 using BattleShip.Services;
 using BattleShip.Services.Game;
-using Google.Protobuf;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Text.Json;
+using BattleShip.Utils;
 
 public interface IGameMultiplayerService
 {
-    public event Func<Task>? OnStateChanged;
-    Guid gameId { get; set; }
-    List<Boat> boats { get; set; }
-    Grid playerGrid { get; set; }
-    Grid opponentGrid { get; set; }
-    List<string> historique { get; set; }
-    string TurnStatus { get; set; }
-    bool IsPlacingBoat { get; set; }
-    PlayerInfo Player { get; set; }
-    PlayerInfo Opponent { get; set; }
     Task StartGame(Guid _gameId);
     Task Attack(Position attackPosition);
     Task CreateHubConnection();
     Task PlaceBoats();
     void PlaceBoat(List<Position> positions);
     bool IsBoatAtPosition(Position position);
-    Task NotifyChange();
     Task LeaveGame();
+    Grid GetPlayerGrid();
+    Grid GetOpponentGrid();
+    bool IsPlacingBoat();
+    Guid? GetGameId();
+    List<string> GetHistorique();
+    List<Boat> GetBoats();
+    PlayerInfo GetPlayer();
+    PlayerInfo GetOpponent();
+    string GetTurnStatus();
+    bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData);
+    bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize);
+    List<Position> GetBoatPositions(Position position, bool isVertical, int size);
 }
+
 public class GameMultiplayerService : IGameMultiplayerService
 {
-    public Guid gameId { get; set; }
-    public required List<Boat> boats { get; set; } = new List<Boat>();
-    public required Grid playerGrid { get; set; }
-    public required Grid opponentGrid { get; set; }
-    public required List<string> historique { get; set; } = new List<string>();
-    public required bool IsPlacingBoat { get; set; } = true;
-    public string TurnStatus { get; set; }
-    public PlayerInfo Player { get; set; }
-    public PlayerInfo Opponent { get; set; }
-    public event Func<Task>? OnStateChanged;
-
     private HubConnection HubConnection;
-    private readonly ITokenService _tokenService;
     private readonly IUserService _userService;
     private readonly IGameEventService gameEventService;
     private readonly IBoatPlacementService _boatPlacementService;
     private readonly IGameUIService _gameUIService;
     private readonly IGameModalService _modalService;
-    private readonly NavigationManager _navManager;
     private readonly IGameEventService _eventService;
     private readonly SignalRService _signalRService;
+    private readonly IGameStateMultiplayerService _gameStateMultiplayerService;
 
-    public GameMultiplayerService(ITokenService tokenService, IGameModalService modalService, NavigationManager navManager, IGameEventService eventService, SignalRService signalRService, IUserService userService)
+    public GameMultiplayerService( 
+        IGameModalService modalService, 
+        IGameEventService eventService, 
+        SignalRService signalRService, 
+        IUserService userService, 
+        IGameUIService gameUIService, 
+        IBoatPlacementService boatPlacementService,
+        IGameStateMultiplayerService gameStateMultiplayerService)
     {
-        _tokenService = tokenService;
         _modalService = modalService;
-        _navManager = navManager;
         _eventService = eventService;
         _signalRService = signalRService;
         _userService = userService;
-    }
-
-    public async Task NotifyChange()
-    {
-        if (OnStateChanged != null)
-        {
-            await OnStateChanged.Invoke();
-        }
+        _gameUIService = gameUIService;
+        _boatPlacementService = boatPlacementService;
+        _gameStateMultiplayerService = gameStateMultiplayerService;
     }
 
     public async Task Attack(Position attackPosition)
     {
+        var gameId = _gameStateMultiplayerService.GameId;
         await HubConnection.SendAsync("SendAttack", gameId, attackPosition);
         await HubConnection.SendAsync("CheckPlayerTurn", gameId);
-        await NotifyChange();
+        await _eventService.NotifyChange();
     }
 
     public async Task StartGame(Guid _gameId)
     {
-        gameId = _gameId;
-        Player = await _userService.LoadPlayerProfile();
-        await HubConnection.SendAsync("SendProfile", gameId, Player.Username, Player.Picture);
-        playerGrid = new Grid(10, 10);
-        opponentGrid = new Grid(10, 10);
-        boats = new List<Boat>();
-        historique = new List<string>();
-        IsPlacingBoat = true;
-        TurnStatus = "Les joueurs doivent placer leurs bateaux";
+        _gameStateMultiplayerService.InitializeGame(_gameId);
+        var gameId = _gameStateMultiplayerService.GameId;
+        _gameStateMultiplayerService.Player = await _userService.LoadPlayerProfile();
+        await HubConnection.SendAsync("SendProfile", gameId, _gameStateMultiplayerService.Player.Username, _gameStateMultiplayerService.Player.Picture);
     }
 
     public async Task CreateHubConnection()
     {
-        var token = await _tokenService.GetAccessTokenAsync();
-
         HubConnection = _signalRService.GetConnection();
 
         HubConnection.On<string?>("BoatPlaced", (playerId) =>
@@ -106,85 +89,53 @@ public class GameMultiplayerService : IGameMultiplayerService
 
         HubConnection.On("BothPlayersReady", async () =>
         {
-            IsPlacingBoat = false;
-            await HubConnection.SendAsync("CheckPlayerTurn", gameId);
+            _gameStateMultiplayerService.IsPlacingBoat = false;
+            await HubConnection.SendAsync("CheckPlayerTurn", _gameStateMultiplayerService.GameId);
         });
 
         HubConnection.On<AttackModel.AttackResponse?>("AttackResult", async (attackResponse) =>
         {
-            Console.WriteLine("ATTAQUE");
-
-            var attackResponseJson = JsonSerializer.Serialize(attackResponse, new JsonSerializerOptions { WriteIndented = true });
-            Console.WriteLine(attackResponseJson);
-
-            attackResponse.PlayerAttackPosition.IsHit = attackResponse.PlayerIsHit;
-            var state = attackResponse.PlayerIsHit ? PositionState.HIT : PositionState.MISS;
-            opponentGrid.PositionsData[attackResponse.PlayerAttackPosition.X][attackResponse.PlayerAttackPosition.Y].Position = attackResponse.PlayerAttackPosition;
-            opponentGrid.PositionsData[attackResponse.PlayerAttackPosition.X][attackResponse.PlayerAttackPosition.Y].State = state;
-            Console.WriteLine($"{opponentGrid.PositionsData[attackResponse.PlayerAttackPosition.X][attackResponse.PlayerAttackPosition.Y].Position.X} {opponentGrid.PositionsData[attackResponse.PlayerAttackPosition.X][attackResponse.PlayerAttackPosition.Y].Position.Y} {opponentGrid.PositionsData[attackResponse.PlayerAttackPosition.X][attackResponse.PlayerAttackPosition.Y].State}");
+            _gameStateMultiplayerService.UpdateOpponentGameState(attackResponse);
 
             if (attackResponse.PlayerIsWinner)
             {
                 Console.WriteLine("Gagné !");
                 var result = await _modalService.ShowModal<GameModal>("Gagné", "Vous avez gagné la partie");
-                if (result == "restart")
+                if (result == "return")
                 {
-                    _eventService.RaiseGameRestarted();
-                    await StartGame(gameId);
-                }
-                else if (result == "return")
-                {
-                    _navManager.NavigateTo("/");
+                    _gameUIService.NavigateTo("/");
                 }
             }
-
-            historique.Add($"Le joueur 1 a attaqué la position ({attackResponse.PlayerAttackPosition.X}, {attackResponse.PlayerAttackPosition.Y}) - {(attackResponse.PlayerIsHit ? "Touché" : "Raté")}");
-
-            if (attackResponse.PlayerIsSunk)
-            {
-                historique.Add("Le joueur 1 a coulé un bateau !");
-            }
-            await NotifyChange();
         });
 
         HubConnection.On<AttackModel.AttackResponse?>("ReceiveAttackResult", async (attackResponse) =>
         {
-            UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, playerGrid);
+            _gameStateMultiplayerService.UpdatePlayerGameState(attackResponse);
             if (attackResponse.PlayerIsWinner)
             {
                 Console.WriteLine("Perdu !");
                 var result = await _modalService.ShowModal<GameModal>("Perdu", "Vous avez perdu la partie");
-                if (result == "restart")
+                if (result == "return")
                 {
-                    _eventService.RaiseGameRestarted();
-                    await StartGame(gameId);
-                }
-                else if (result == "return")
-                {
-                    _navManager.NavigateTo("/");
+                    _gameUIService.NavigateTo("/");
                 }
             }
 
-            historique.Add($"Le joueur 1 a attaqué la position ({attackResponse.PlayerAttackPosition.X}, {attackResponse.PlayerAttackPosition.Y}) - {(attackResponse.PlayerIsHit ? "Touché" : "Raté")}");
+            GridUtils.RecordAttack(_gameStateMultiplayerService.Historique, attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, _gameStateMultiplayerService.Player.Username);
 
-            if (attackResponse.PlayerIsSunk)
-            {
-                historique.Add("Le joueur 1 a coulé un bateau !");
-            }
-            await NotifyChange();
+            await _eventService.NotifyChange();
         });
 
         HubConnection.On<bool>("IsPlayerTurn", async (isPlayerTurn) =>
         {
-            TurnStatus = isPlayerTurn ? "C'est ton tour !" : "Au tour de l'adversaire";
-            await NotifyChange();
+            _gameStateMultiplayerService.TurnStatus = isPlayerTurn ? "C'est ton tour !" : "Au tour de l'adversaire";
+            await _eventService.NotifyChange();
         });
 
         HubConnection.On<PlayerInfo>("SendPlayerInfo", async (player) =>
         {
-            Console.WriteLine("Joueur");
-            Opponent = player;
-            await NotifyChange();
+            _gameStateMultiplayerService.Opponent = player;
+            await _eventService.NotifyChange();
         });
 
         HubConnection.On("GameIsFinished", async () =>
@@ -192,41 +143,92 @@ public class GameMultiplayerService : IGameMultiplayerService
             var result = await _modalService.ShowModal<GameModal>("Gagné", "Vous avez gagné la partie");
             if (result == "return")
             {
-                _navManager.NavigateTo("/");
+                _gameUIService.NavigateTo("/");
             }
         });
     }
 
-    private void UpdateGrid(Position position, bool isHit, Grid grid)
-    {
-        position.IsHit = isHit;
-        var state = isHit ? PositionState.HIT : PositionState.MISS;
-        grid.PositionsData[position.X][position.Y].Position = position;
-        grid.PositionsData[position.X][position.Y].State = state;
-        Console.WriteLine($"{grid.PositionsData[position.X][position.Y].Position} {state.ToString()}");
-    }
-
     public async Task PlaceBoats()
     {
-        await HubConnection.SendAsync("PlaceBoat", boats, gameId);
+        await HubConnection.SendAsync("PlaceBoat", GetBoats(), GetGameId());
     }
 
     public void PlaceBoat(List<Position> positions)
     {
-        boats.Add(new Boat(positions));
+        _boatPlacementService.PlaceBoat(GetBoats(), positions);
     }
 
     public bool IsBoatAtPosition(Position position)
     {
-        return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
+        return _boatPlacementService.IsBoatAtPosition(GetBoats(), position);
     }
 
     public async Task LeaveGame()
     {
         if (HubConnection != null)
         {
-            await HubConnection.SendAsync("LeaveGame", gameId);
+            await HubConnection.SendAsync("LeaveGame", GetGameId());
             await HubConnection.DisposeAsync();
         }
+    }
+
+    public Grid GetPlayerGrid()
+    {
+        return _gameStateMultiplayerService.PlayerGrid;
+    }
+
+    public Grid GetOpponentGrid()
+    {
+        return _gameStateMultiplayerService.OpponentGrid;
+    }
+
+    public bool IsPlacingBoat()
+    {
+        return _gameStateMultiplayerService.IsPlacingBoat;
+    }
+
+    public Guid? GetGameId()
+    {
+        return _gameStateMultiplayerService.GameId;
+    }
+
+    public List<string> GetHistorique()
+    {
+        return _gameStateMultiplayerService.Historique;
+    }
+
+    public List<Boat> GetBoats()
+    {
+        return _gameStateMultiplayerService.Boats;
+    }
+
+    public PlayerInfo GetPlayer()
+    {
+        return _gameStateMultiplayerService.Player;
+    }
+
+    public PlayerInfo GetOpponent()
+    {
+        return _gameStateMultiplayerService.Opponent;
+    }
+
+    public string GetTurnStatus()
+    {
+        return _gameStateMultiplayerService.TurnStatus;
+    }
+
+    public bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData)
+    {
+        return _boatPlacementService.CanPlaceBoat(row, col, isVertical, boatSize, positionsData);
+    }
+
+    public bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize)
+    {
+        return _boatPlacementService.ArePositionsOverlapping(row, col, isVertical, boatSize, GetBoats());
+    }
+
+    public List<Position> GetBoatPositions(Position position, bool isVertical, int size)
+    {
+        return _boatPlacementService.GetBoatPositions(position, isVertical, size);
     }
 }

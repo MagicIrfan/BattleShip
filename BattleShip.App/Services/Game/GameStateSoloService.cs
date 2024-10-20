@@ -3,8 +3,10 @@
 using BattleShip.Components;
 using BattleShip.Models;
 using BattleShip.Models.Response;
+using BattleShip.Models.State;
+using BattleShip.Utils;
 
-public interface IGameStateService
+public interface IGameStateSoloService
 {
     Guid? GameId { get; set; }
     List<Boat> Boats { get; }
@@ -16,12 +18,10 @@ public interface IGameStateService
 
     void InitializeGame(Guid? gameId);
     void UpdateGameState(AttackModel.AttackResponse attackResponse);
-    void PlaceBoat(List<Position> positions);
-    bool IsBoatAtPosition(Position position);
     void RestorePreviousState(RollbackResponse rollbackResponse);
 }
 
-public class GameStateService : IGameStateService
+public class GameStateSoloService : IGameStateSoloService
 {
     public Guid? GameId { get; set; }
     public List<Boat> Boats { get; private set; } = new List<Boat>();
@@ -33,7 +33,7 @@ public class GameStateService : IGameStateService
 
     private readonly IGameEventService _eventService;
 
-    public GameStateService(IGameEventService eventService)
+    public GameStateSoloService(IGameEventService eventService)
     {
         _eventService = eventService;
     }
@@ -51,39 +51,12 @@ public class GameStateService : IGameStateService
 
     public void UpdateGameState(AttackModel.AttackResponse attackResponse)
     {
-        UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, OpponentGrid);
-        RecordAttack(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, "Le joueur");
+        GridUtils.UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, OpponentGrid);
+        GridUtils.RecordAttack(Historique, attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, "Le joueur");
 
-        UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, PlayerGrid);
-        RecordAttack(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, attackResponse.AiIsSunk ?? false, "L'ordinateur");
+        GridUtils.UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, PlayerGrid);
+        GridUtils.RecordAttack(Historique, attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, attackResponse.AiIsSunk ?? false, "L'ordinateur");
         _eventService.NotifyChange();   
-    }
-
-    private void UpdateGrid(Position position, bool isHit, Grid grid)
-    {
-        position.IsHit = isHit;
-        var state = isHit ? PositionState.HIT : PositionState.MISS;
-
-        grid.PositionsData[position.X][position.Y].Position = position;
-        grid.PositionsData[position.X][position.Y].State = state;
-    }
-
-    private void RecordAttack(Position position, bool isHit, bool isSunk, string attacker)
-    {
-        string result = isHit ? "Touché" : "Raté";
-        string sinkInfo = isSunk ? " et a coulé un bateau" : "";
-
-        Historique.Add($"{attacker} a attaqué la position ({position.X}, {position.Y}) - {result}{sinkInfo}.");
-    }
-
-    public void PlaceBoat(List<Position> positions)
-    {
-        Boats.Add(new Boat(positions));
-    }
-
-    public bool IsBoatAtPosition(Position position)
-    {
-        return Boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
     }
 
     public void RestorePreviousState(RollbackResponse rollbackResponse)

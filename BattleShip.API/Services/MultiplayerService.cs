@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Models.State;
 using BattleShip.Pages;
 using FluentValidation;
 using Microsoft.AspNetCore.SignalR;

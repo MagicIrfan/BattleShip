@@ -2,6 +2,7 @@ using BattleShip.API;
 using BattleShip.API.Services;
 using BattleShip.API.Validator;
 using BattleShip.Models;
+using BattleShip.Models.Request;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;

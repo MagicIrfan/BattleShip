@@ -5,13 +5,13 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BattleShip.API.Services;
 
-public class GameGrpcService(IGameService gameService, IValidator<Models.StartGameRequest> startGameRequestValidator, IValidator<Models.Boat> boatValidator) : Grpc.GameService.GameServiceBase
+public class GameGrpcService(IGameService gameService, IValidator<Models.AttackModel.AttackRequest> attackRequestValidator, IValidator<Models.Request.StartGameRequest> startGameRequestValidator, IValidator<Models.Boat> boatValidator) : Grpc.GameService.GameServiceBase
 {
     [Authorize]
     public override async Task<StartGameResponse> StartGame(StartGameRequest request, ServerCallContext context)
     {
-        var modelRequest = new Models.StartGameRequest(request.SizeGrid, request.Difficulty);
-        
+        var modelRequest = new Models.Request.StartGameRequest(request.SizeGrid, request.Difficulty);
+
         var gameId = await gameService.StartGame(modelRequest, startGameRequestValidator);
 
         var response = new StartGameResponse
@@ -21,7 +21,7 @@ public class GameGrpcService(IGameService gameService, IValidator<Models.StartGa
 
         return response;
     }
-    
+
     /*[Authorize]
     public override async Task<AttackResponse> Attack(AttackRequest request, ServerCallContext context)
     {

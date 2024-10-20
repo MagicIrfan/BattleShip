@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace BattleShip.Models
+namespace BattleShip.Models.State
 {
     public class GameState(
         Guid gameId,
@@ -10,7 +10,7 @@ namespace BattleShip.Models
     {
         public Guid GameId { get; set; } = gameId;
         public List<Player> Players { get; set; } = players;
-        
+
         public bool IsMultiplayer { get; set; } = false;
         public int GridSize { get; set; } = 10;
         public int Difficulty { get; set; } = difficulty;

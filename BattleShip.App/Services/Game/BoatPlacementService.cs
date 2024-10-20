@@ -6,6 +6,8 @@ public interface IBoatPlacementService
 {
     bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData);
     List<Position> GetBoatPositions(Position position, bool isVertical, int size);
+    void PlaceBoat(List<Boat> boats, List<Position> positions);
+    bool IsBoatAtPosition(List<Boat> boats, Position position);
     bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize, List<Boat> boats);
 }
 
@@ -47,5 +49,15 @@ public class BoatPlacementService : IBoatPlacementService
         }
 
         return boatPositions;
+    }
+
+    public void PlaceBoat(List<Boat> boats, List<Position> positions)
+    {
+        boats.Add(new Boat(positions));
+    }
+
+    public bool IsBoatAtPosition(List<Boat> boats, Position position)
+    {
+        return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
     }
 }
