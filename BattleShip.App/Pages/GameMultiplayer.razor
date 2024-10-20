@@ -3,6 +3,7 @@
 @inject IJSRuntime JsRuntime
 @inject IModalService Modal
 @inject ITokenService TokenService
+@inject IGameEventService GameEventService
 @inject IUserService IUser
 @inject SignalRService _signalRService
 @inject NavigationManager Navigation
@@ -12,28 +13,30 @@
 <main>
     @if (GameService.GetPlayerGrid() != null && GameService.GetOpponentGrid() != null && GameId != null)
     {
-        @if (GameService.GetPlayer() != null)
-        {
-            <GameProfile User="@GameService.GetPlayer()"></GameProfile>
-        }
-        
-        <p>@GameService.GetTurnStatus()</p>
-        <div class="grids">
-            <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetPlayerGrid().PositionsData"></PlayerGridMultiplayer>
+        <div class="container">
+            @if (GameService.GetPlayer() != null)
+            {
+                <GameProfile User="@GameService.GetPlayer()"></GameProfile>
+            }
 
-            <div class="historique-container">
-                @foreach (var item in GameService.GetHistorique())
-                {
-                    <p>@item</p>
-                }
+            <p>@GameService.GetTurnStatus()</p>
+            <div class="grids">
+                <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetPlayerGrid().PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGridMultiplayer>
+
+                <div class="historique-container">
+                    @foreach (var item in GameService.GetHistorique())
+                    {
+                        <p>@item</p>
+                    }
+                </div>
+
+                <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetOpponentGrid().PositionsData" OnAttack="HandleAttack"></OpponentGrid>
             </div>
-
-            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetOpponentGrid().PositionsData" OnAttack="HandleAttack"></OpponentGrid>
+            @if (GameService.GetOpponent() != null)
+            {
+                <GameProfile User="@GameService.GetOpponent()"></GameProfile>
+            }
         </div>
-        @if (GameService.GetOpponent() != null)
-        {
-            <GameProfile User="@GameService.GetOpponent()"></GameProfile>
-        }
     }
     else
     {
@@ -42,6 +45,13 @@
 </main>
 
 <style>
+    .container{
+        width:100%;
+        display:flex;
+        flex-direction:row;
+        align-items:center;
+        justify-content:center;
+    }
     .grids {
         display: flex;
         flex-grow: 1;
@@ -86,10 +96,13 @@
             .historique-container p:hover {
                 background-color: #e6f7ff;
             }
+    
 </style>
 
 @code {
     [Parameter] public string GameId { get; set; }
+
+    private void TogglePlacingBoats() => GameService.TogglePlacingBoat();
 
     protected override async Task OnInitializedAsync()
     {
@@ -97,6 +110,7 @@
         await GameService.CreateHubConnection();
         await GameService.StartGame(guidValue);
         Navigation.LocationChanged += OnLocationChanged;
+        GameEventService.OnStateChanged += async () => await InvokeAsync(StateHasChanged);
         await JS.InvokeVoidAsync("window.addEventListener", "beforeunload", EventCallback.Factory.Create(this, async () => await GameService.LeaveGame()));
     }
 
@@ -114,5 +128,6 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        GameEventService.OnStateChanged -= async () => await InvokeAsync(StateHasChanged);
     }
 }

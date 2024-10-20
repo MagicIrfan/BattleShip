@@ -30,6 +30,7 @@ public interface IGameMultiplayerService
     bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData);
     bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize);
     List<Position> GetBoatPositions(Position position, bool isVertical, int size);
+    void TogglePlacingBoat();
 }
 
 public class GameMultiplayerService : IGameMultiplayerService
@@ -82,15 +83,18 @@ public class GameMultiplayerService : IGameMultiplayerService
     {
         HubConnection = _signalRService.GetConnection();
 
-        HubConnection.On<string?>("BoatPlaced", (playerId) =>
+        HubConnection.On<string?>("BoatPlaced", async (playerId) =>
         {
             Console.WriteLine($"Le joueur {playerId} a bien placé ses bateaux !");
+            _gameStateMultiplayerService.IsPlacingBoat = false;
+            await _eventService.NotifyChange();
         });
 
         HubConnection.On("BothPlayersReady", async () =>
         {
             _gameStateMultiplayerService.IsPlacingBoat = false;
             await HubConnection.SendAsync("CheckPlayerTurn", _gameStateMultiplayerService.GameId);
+            await _eventService.NotifyChange();
         });
 
         HubConnection.On<AttackModel.AttackResponse?>("AttackResult", async (attackResponse) =>
@@ -106,6 +110,8 @@ public class GameMultiplayerService : IGameMultiplayerService
                     _gameUIService.NavigateTo("/");
                 }
             }
+
+            await _eventService.NotifyChange();
         });
 
         HubConnection.On<AttackModel.AttackResponse?>("ReceiveAttackResult", async (attackResponse) =>
@@ -120,8 +126,6 @@ public class GameMultiplayerService : IGameMultiplayerService
                     _gameUIService.NavigateTo("/");
                 }
             }
-
-            GridUtils.RecordAttack(_gameStateMultiplayerService.Historique, attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, _gameStateMultiplayerService.Player.Username);
 
             await _eventService.NotifyChange();
         });
@@ -230,5 +234,10 @@ public class GameMultiplayerService : IGameMultiplayerService
     public List<Position> GetBoatPositions(Position position, bool isVertical, int size)
     {
         return _boatPlacementService.GetBoatPositions(position, isVertical, size);
+    }
+
+    public void TogglePlacingBoat()
+    {
+        _gameStateMultiplayerService.IsPlacingBoat = false;
     }
 }

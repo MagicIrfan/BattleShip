@@ -34,13 +34,6 @@ public class GameStateMultiplayerService : IGameStateMultiplayerService
     public PlayerInfo Player { get; set; }
     public PlayerInfo Opponent { get; set; }
 
-    private readonly IGameEventService _eventService;
-
-    public GameStateMultiplayerService(IGameEventService eventService)
-    {
-        _eventService = eventService;
-    }
-
     public void InitializeGame(Guid? gameId)
     {
         GameId = gameId;
@@ -56,14 +49,12 @@ public class GameStateMultiplayerService : IGameStateMultiplayerService
     {
         GridUtils.UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, OpponentGrid);
         GridUtils.RecordAttack(Historique, attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, Player.Username);
-        _eventService.NotifyChange();
     }
 
     public void UpdatePlayerGameState(AttackModel.AttackResponse attackResponse)
     {
-        GridUtils.UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, PlayerGrid);
-        GridUtils.RecordAttack(Historique, attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, attackResponse.AiIsSunk ?? false, Opponent.Username);
-        _eventService.NotifyChange();
+        GridUtils.UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, PlayerGrid);
+        GridUtils.RecordAttack(Historique, attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, Opponent.Username);
     }
 }
 

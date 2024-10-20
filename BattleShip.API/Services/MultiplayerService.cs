@@ -61,7 +61,7 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
             throw new UnauthorizedAccessException("User not recognized");
         
         await gameService.PlaceBoats(playerBoats, gameId, boatValidator, playerId);
-        await gameHub.Clients.Group(gameId.ToString()).SendAsync("BoatPlaced", playerId);
+        await gameHub.Clients.User(playerId).SendAsync("BoatPlaced", playerId);
         
         if (gameRepository.GetGame(gameId)!.Players.All(p => p.PlayerBoats.Count == 5))
         {
