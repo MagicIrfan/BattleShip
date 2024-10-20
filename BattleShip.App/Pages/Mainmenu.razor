@@ -10,16 +10,27 @@
 
 <main>
     <header>
-        @if (isUserAuthenticated && user != null)
-        {
-            <div class="profile">
-                <div class="profile-details">
-                    <img src="@user.Picture" alt="Profile Picture" class="profile-image" />
-                    <p>@user.Username</p>
-                </div>
-            </div>
-        }
+        <div class="profile">
+            @if (isUserAuthenticated)
+            {
+                @if (user != null)
+                {
+                    <div class="profile-details">
+                        <img src="@user.Picture" alt="Profile Picture" class="profile-image" />
+                        <p>@user.Username</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="profile-placeholder">
+                        <div class="profile-image-placeholder"></div>
+                        <p>Chargement...</p>
+                    </div>
+                }
+            }
+        </div>
     </header>
+
     <div class="header-content">
         <div class="container-center">
             <h1 id="title">Bataille Navale</h1>
@@ -49,7 +60,7 @@
         isUserAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
         if (isUserAuthenticated)
         {
-            user = await UserService.LoadPlayerProfile();
+            user = await UserService.LoadPlayerProfile(); 
         }
     }
 
@@ -75,17 +86,19 @@
 }
 
 <style>
-    main{
-        width:100%;
-        display:flex;
-        flex-direction:column;
+    main {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
     }
-    header{
-        padding-right:50px;
+
+    header {
+        padding-right: 50px;
     }
+
     .header-content {
         display: flex;
-        justify-content: right;
+        justify-content: center;
         align-items: center;
         width: 100%;
     }
@@ -106,11 +119,11 @@
         margin-bottom: 40px;
     }
 
-    p{
+    p {
         font-size: 1em;
         color: white;
         text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-        font-weight:bold;
+        font-weight: bold;
     }
 
     .buttons {
@@ -147,14 +160,14 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        margin-left: auto; 
+        margin-left: auto;
     }
 
     .profile-details {
         display: flex;
         align-items: center;
-        flex-direction:column;
-        justify-content:center;
+        flex-direction: column;
+        justify-content: center;
         gap: 10px;
     }
 
@@ -163,5 +176,20 @@
         height: 50px;
         border-radius: 50%;
         object-fit: cover;
+    }
+
+    .profile-placeholder {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .profile-image-placeholder {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #cccccc;
     }
 </style>

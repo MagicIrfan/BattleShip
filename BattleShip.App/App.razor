@@ -4,11 +4,11 @@
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                 <Authorizing>
-                    <p class="app">Chargement...</p>
+                        <p class="loading">Chargement...</p>
                 </Authorizing>
                 <NotAuthorized>
-                        <h1 class="app">Désolé</h1>
-                        <p class="app">Vous ne pouvez pas accéder à cette page, vous devez vous connecter</p>
+                        <h1 class="loading">Désolé</h1>
+                        <p class="loading">Vous ne pouvez pas accéder à cette page, vous devez vous connecter</p>
                 </NotAuthorized>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
@@ -16,7 +16,7 @@
         <NotFound>
             <PageTitle>Page non trouvé</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                    <p role="alert" class="app">Désolé, aucune page n'est à cette addresse</p>
+                    <p role="alert" class="loading">Désolé, aucune page n'est à cette addresse</p>
             </LayoutView>
         </NotFound>
         </Router>
@@ -24,7 +24,7 @@
 </CascadingBlazoredModal>
 
 <style>
-    p.app, p.loading {
+    p.loading {
         color: white;
         text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
         font-size: 4em;
