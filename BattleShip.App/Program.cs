@@ -32,12 +32,13 @@ builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IHttpService, HttpService>();
 builder.Services.AddScoped<IGameEventService, GameEventService>();
-builder.Services.AddScoped<IGameLogicService, GameLogicService>();
+builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IGameApiService, GameApiService>();
 builder.Services.AddScoped<IGameStateService, GameStateService>();
 builder.Services.AddScoped<IGameUIService, GameUIService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IGameMultiplayerService, GameMultiplayerService>();
+builder.Services.AddScoped<IBoatPlacementService, BoatPlacementService>();
 builder.Services.AddScoped<SignalRService>();
 
 builder.Services.AddBlazoredSessionStorage();

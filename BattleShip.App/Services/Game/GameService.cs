@@ -2,7 +2,7 @@
 using BattleShip.Services.Game;
 namespace BattleShip.Services;
 
-public interface IGameLogicService
+public interface IGameService
 {
     Task StartGame();
     Task PlaceBoats();
@@ -19,26 +19,32 @@ public interface IGameLogicService
     GameParameter GetGameParameter();
     void SetGameParameter(int size, int difficulty);
     List<Boat> GetBoats();
+    bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData);
+    bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize);
+    List<Position> GetBoatPositions(Position position, bool isVertical, int size);
 }
 
 
-public class GameLogicService : IGameLogicService
+public class GameService : IGameService
 {
     private readonly IGameStateService _stateService;
     private readonly IGameApiService _apiService;
     private readonly IGameUIService _uiService;
     private readonly IGameEventService _gameEventService;
+    private readonly IBoatPlacementService _boatPlacementService;
 
-    public GameLogicService(
+    public GameService(
         IGameStateService stateService,
         IGameApiService apiService,
         IGameUIService uiService,
-        IGameEventService gameEventService)
+        IGameEventService gameEventService,
+        IBoatPlacementService boatPlacementService)
     {
         _stateService = stateService;
         _apiService = apiService;
         _uiService = uiService;
         _gameEventService = gameEventService;
+        _boatPlacementService = boatPlacementService;
     }
 
     public async Task StartGame()
@@ -137,6 +143,21 @@ public class GameLogicService : IGameLogicService
     public List<Boat> GetBoats()
     {
         return _stateService.Boats;
+    }
+
+    public bool CanPlaceBoat(int row, int col, bool isVertical, int boatSize, PositionData[][] positionsData)
+    {
+        return _boatPlacementService.CanPlaceBoat(row, col, isVertical, boatSize, positionsData);
+    }
+
+    public bool ArePositionsOverlapping(int row, int col, bool isVertical, int boatSize)
+    {
+        return _boatPlacementService.ArePositionsOverlapping(row, col, isVertical, boatSize, GetBoats());
+    }
+
+    List<Position> GetBoatPositions(Position position, bool isVertical, int size)
+    {
+        return _boatPlacementService.GetBoatPositions(position, isVertical, size);
     }
 }
 
