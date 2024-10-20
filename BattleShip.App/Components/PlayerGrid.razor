@@ -1,4 +1,4 @@
-﻿@inject IGameService GameService
+﻿@inject IGameLogicService GameService
 @inject IJSRuntime JsRuntime
 @inject IGameEventService GameEventService
 @inject IUserService UserService
@@ -122,7 +122,7 @@
 
     private bool ArePositionsOverlapping(int mouseRow, int mouseCol, bool isVertical, int boatSize)
     {
-        return GameService.boats.Any(boat =>
+        return GameService.GetBoats().Any(boat =>
             boat.Positions.Any(existingPosition =>
             Enumerable.Range(0, boatSize).Any(i =>
                 existingPosition.X == (isVertical ? mouseCol : mouseCol + i) &&

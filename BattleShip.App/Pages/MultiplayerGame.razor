@@ -99,9 +99,4 @@
     {
         GameService.IsPlacingBoat = false;
     }
-
-    public void Dispose()
-    {
-        GameService.OnStateChanged -= async () => await InvokeAsync(StateHasChanged);
-    }
 }

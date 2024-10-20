@@ -1,5 +1,5 @@
 ﻿@inject NavigationManager Navigation
-@inject IGameService GameService
+@inject IGameLogicService GameService
 
 <div class="modal-content">
     <h1>@Title</h1>
@@ -109,9 +109,7 @@
 
     private void HandleSubmit()
     {
-        GameService.gameParameter.DifficultyLevel = DifficultyLevel;
-        GameService.gameParameter.GridSize = GridSize;
-        Console.WriteLine($"Grid Size: {GridSize}, Difficulty Level: {DifficultyLevel}");
+        GameService.SetGameParameter(GridSize, DifficultyLevel);
         ModalInstance.CloseAsync();
         Navigation.NavigateTo("/game");
     }

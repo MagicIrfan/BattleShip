@@ -7,6 +7,7 @@ using Grpc.Net.Client;
 using BattleShip;
 using BattleShip.Services;
 using Microsoft.AspNetCore.SignalR.Client;
+using BattleShip.Services.Game;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");

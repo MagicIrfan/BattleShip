@@ -1,6 +1,7 @@
 ﻿using BattleShip.Components;
 using BattleShip.Exceptions;
 using BattleShip.Models;
+using BattleShip.Services.Game;
 using Blazored.Modal.Services;
 using Microsoft.AspNetCore.Components;
 using System.Text.Json;
@@ -95,7 +96,7 @@ public class GameService : IGameService
 
     public async Task Attack(Position attackPosition)
     {
-        var json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
+        /*var json = JsonSerializer.Serialize(attackPosition, new JsonSerializerOptions { WriteIndented = true });
         var attackRequest = new AttackModel.AttackRequest(gameId ?? Guid.Empty, attackPosition);
         var playerAttackResponse = await _httpService.SendHttpRequestAsync(HttpMethod.Post, $"/game/attack?gameId={gameId}", attackRequest);
 
@@ -103,7 +104,7 @@ public class GameService : IGameService
         {
             var jsonString = await playerAttackResponse.Content.ReadAsStringAsync();
 
-            var attackResponse = JsonSerializer.Deserialize<AttackResponse>(jsonString, new JsonSerializerOptions
+            var attackResponse = JsonSerializer.Deserialize<AttackModel.AttackResponse>(jsonString, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
@@ -167,7 +168,7 @@ public class GameService : IGameService
         else
         {
             throw new AttackException($"Error calling attack: {playerAttackResponse.StatusCode}", playerAttackResponse.StatusCode);
-        }
+        }*/
     }
 
     private void UpdateGrid(Position position, bool isHit, Grid grid)

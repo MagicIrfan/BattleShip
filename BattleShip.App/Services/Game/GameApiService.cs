@@ -1,14 +1,15 @@
 ﻿using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Pages;
 using System.Text.Json;
 
-namespace BattleShip.Services;
+namespace BattleShip.Services.Game;
 
 public interface IGameApiService
 {
     Task<Guid?> StartGameAsync(int gridSize, int difficulty);
     Task PlaceBoatsAsync(List<Boat> boats, Guid? gameId);
-    Task<AttackResponse> AttackAsync(Guid? gameId, Position attackPosition);
+    Task<AttackModel.AttackResponse> AttackAsync(Guid? gameId, Position attackPosition);
     Task<RollbackResponse?> RollbackAsync(Guid? gameId);
 }
 
@@ -25,7 +26,15 @@ public class GameApiService : IGameApiService
     {
         var startGameRequest = new StartGameRequest(gridSize, difficulty);
         var response = await SendRequest(HttpMethod.Post, "/game/startGame", startGameRequest);
-        return response != null ? Guid.Parse(response) : null;
+        using (JsonDocument doc = JsonDocument.Parse(response))
+        {
+            string result = doc.RootElement.GetProperty("result").GetString();
+            if (result != null)
+            {
+                return Guid.Parse(result);
+            }
+        }
+        return null;
     }
 
     public async Task PlaceBoatsAsync(List<Boat> boats, Guid? gameId)
@@ -33,11 +42,14 @@ public class GameApiService : IGameApiService
         await SendRequest(HttpMethod.Post, $"/game/placeBoats?gameId={gameId}", boats);
     }
 
-    public async Task<AttackResponse> AttackAsync(Guid? gameId, Position attackPosition)
+    public async Task<AttackModel.AttackResponse> AttackAsync(Guid? gameId, Position attackPosition)
     {
         var attackRequest = new AttackModel.AttackRequest(gameId ?? Guid.Empty, attackPosition);
         var jsonString = await SendRequest(HttpMethod.Post, $"/game/attack?gameId={gameId}", attackRequest);
-        return JsonSerializer.Deserialize<AttackResponse>(jsonString);
+        return JsonSerializer.Deserialize<AttackModel.AttackResponse>(jsonString, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
     }
 
     public async Task<RollbackResponse?> RollbackAsync(Guid? gameId)

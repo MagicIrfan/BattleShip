@@ -1,5 +1,6 @@
 ﻿@page "/game"
-@inject IGameService GameService
+@inject IGameLogicService GameService
+@inject IGameEventService GameEventService
 @inject IJSRuntime JsRuntime
 @inject IModalService Modal
 @inject ITokenService TokenService
@@ -10,20 +11,20 @@
 <PageTitle>BattleShip</PageTitle>
 
 <main>
-    @if (GameService.gameId != null)
+    @if (GameService.GetGameId() != null)
     {
         <button @onclick="OnRollback">Rollback</button>
         <div class="grids">
-            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
+            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetPlayerGrid().PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGrid>
 
             <div class="historique-container">
-                @foreach (var item in GameService.historique)
+                @foreach (var item in GameService.GetHistorique())
                 {
                     <p>@item</p>
                 }
             </div>
 
-            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></OpponentGrid>
+            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()" PositionsData="GameService.GetOpponentGrid().PositionsData" OnAttack="HandleAttack"></OpponentGrid>
         </div>
     }
     else
@@ -82,7 +83,7 @@
 @code {
     private void TogglePlacingBoats()
     {
-        GameService.IsPlacingBoat = !GameService.IsPlacingBoat;
+        GameService.TogglePlacingBoat();
     }
 
     private async Task HandleAttack(Position position)
@@ -94,6 +95,7 @@
     protected override async Task OnInitializedAsync()
     {
         await GameService.StartGame();
+        GameEventService.OnStateChanged += async () => await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnRollback()

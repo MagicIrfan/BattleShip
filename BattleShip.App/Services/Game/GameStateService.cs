@@ -1,20 +1,20 @@
-﻿namespace BattleShip.Services;
+﻿namespace BattleShip.Services.Game;
 
 using BattleShip.Components;
 using BattleShip.Models;
 
 public interface IGameStateService
 {
-    Guid? GameId { get; }
+    Guid? GameId { get; set; }
     List<Boat> Boats { get; }
     Grid PlayerGrid { get; }
     Grid OpponentGrid { get; }
     List<string> Historique { get; }
-    bool IsPlacingBoat { get; }
+    bool IsPlacingBoat { get; set; }
     GameParameter GameParameter { get; set; }
 
     void InitializeGame(Guid? gameId);
-    void UpdateGameState(AttackResponse attackResponse);
+    void UpdateGameState(AttackModel.AttackResponse attackResponse);
     void PlaceBoat(List<Position> positions);
     bool IsBoatAtPosition(Position position);
     void RestorePreviousState(RollbackResponse rollbackResponse);
@@ -22,13 +22,20 @@ public interface IGameStateService
 
 public class GameStateService : IGameStateService
 {
-    public Guid? GameId { get; private set; }
+    public Guid? GameId { get; set; }
     public List<Boat> Boats { get; private set; } = new List<Boat>();
     public Grid PlayerGrid { get; private set; }
     public Grid OpponentGrid { get; private set; }
     public List<string> Historique { get; private set; } = new List<string>();
-    public bool IsPlacingBoat { get; private set; } = true;
+    public bool IsPlacingBoat { get; set; } = true;
     public GameParameter GameParameter { get; set; } = new GameParameter();
+
+    private readonly IGameEventService _eventService;
+
+    public GameStateService(IGameEventService eventService)
+    {
+        _eventService = eventService;
+    }
 
     public void InitializeGame(Guid? gameId)
     {
@@ -41,13 +48,14 @@ public class GameStateService : IGameStateService
         IsPlacingBoat = true;
     }
 
-    public void UpdateGameState(AttackResponse attackResponse)
+    public void UpdateGameState(AttackModel.AttackResponse attackResponse)
     {
         UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, OpponentGrid);
         RecordAttack(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, "Le joueur");
 
-        UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit, PlayerGrid);
-        RecordAttack(attackResponse.AiAttackPosition, attackResponse.AiIsHit, "L'ordinateur");
+        UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, PlayerGrid);
+        RecordAttack(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, "L'ordinateur");
+        _eventService.NotifyChange();   
     }
 
     private void UpdateGrid(Position position, bool isHit, Grid grid)

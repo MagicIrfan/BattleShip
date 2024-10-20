@@ -2,6 +2,7 @@
 
 using BattleShip.Components;
 using BattleShip.Models;
+using BattleShip.Services.Game;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
