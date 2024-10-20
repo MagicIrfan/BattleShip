@@ -35,6 +35,19 @@ public static class GameHelper
             throw new UnauthorizedAccessException("User not allowed to play this turn");
         }
     }
+
+    public static bool IsPlayerTurn(GameState gameState, string playerId)
+    {
+        if (gameState.AttackHistory.IsNullOrEmpty())
+        {
+            var firstPlayerId = gameState.Players.First().PlayerId;
+            return firstPlayerId.Equals(playerId);
+        }
+        else
+        {
+            return !gameState.AttackHistory.Last().PlayerId.Equals(playerId);
+        }
+    }
     
     public static List<Boat> GetPlayerBoats(GameState gameState, string playerId)
     {

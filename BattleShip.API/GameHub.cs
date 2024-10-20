@@ -43,4 +43,9 @@ public class GameHub(IMultiplayerService multiplayerService) : Hub
     {
         await multiplayerService.SendAttack(gameId, position, Context);
     }
+
+    public async Task CheckPlayerTurn(Guid gameId)
+    {
+        await multiplayerService.CheckPlayerTurn(gameId,Context);
+    }
 }

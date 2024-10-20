@@ -16,6 +16,7 @@ public interface IGameMultiplayerService
     Grid playerGrid { get; set; }
     Grid opponentGrid { get; set; }
     List<string> historique { get; set; }
+    string TurnStatus { get; set; }
     bool IsPlacingBoat { get; set; }
     Task StartGame(Guid _gameId);
     Task Attack(Position attackPosition);
@@ -35,6 +36,7 @@ public class GameMultiplayerService : IGameMultiplayerService
     public required Grid opponentGrid { get; set; }
     public required List<string> historique { get; set; } = new List<string>();
     public required bool IsPlacingBoat { get; set; } = true;
+    public string TurnStatus { get; set; }
     public event Func<Task>? OnStateChanged;
 
     private readonly IGameModalService _modalService;
@@ -62,6 +64,8 @@ public class GameMultiplayerService : IGameMultiplayerService
     public async Task Attack(Position attackPosition)
     {
         await HubConnection.SendAsync("SendAttack", gameId, attackPosition);
+        await HubConnection.SendAsync("CheckPlayerTurn", gameId);
+        await NotifyChange();
     }
 
     public async Task StartGame(Guid _gameId)
@@ -73,6 +77,7 @@ public class GameMultiplayerService : IGameMultiplayerService
         boats = new List<Boat>();
         historique = new List<string>();
         IsPlacingBoat = true;
+        TurnStatus = "Les joueurs doivent placer leurs bateaux";
     }
 
     public async Task CreateHubConnection()
@@ -88,9 +93,10 @@ public class GameMultiplayerService : IGameMultiplayerService
             Console.WriteLine($"Le joueur {playerId} a bien placé ses bateaux !");
         });
 
-        HubConnection.On("BothPlayersReady", () =>
+        HubConnection.On("BothPlayersReady", async () =>
         {
             IsPlacingBoat = false;
+            await HubConnection.SendAsync("CheckPlayerTurn", gameId);
         });
 
         HubConnection.On<AttackModel.AttackResponse?>("AttackResult", async (attackResponse) =>
@@ -155,6 +161,11 @@ public class GameMultiplayerService : IGameMultiplayerService
                 historique.Add("Le joueur 1 a coulé un bateau !");
             }
             await NotifyChange();
+        });
+
+        HubConnection.On<bool>("IsPlayerTurn", async (isPlayerTurn) =>
+        {
+            TurnStatus = isPlayerTurn ? "C'est ton tour !" : "Au tour de l'adversaire";
             await NotifyChange();
         });
     }

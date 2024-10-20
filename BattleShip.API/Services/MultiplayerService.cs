@@ -4,6 +4,7 @@ using BattleShip.Models;
 using BattleShip.Pages;
 using FluentValidation;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.IdentityModel.Tokens;
 
 namespace BattleShip.API.Services;
 
@@ -17,6 +18,7 @@ public interface IMultiplayerService
     Task<List<LobbyModel>> GetAvailableLobbies();
     Task PlaceBoat(List<Boat> playerBoats, Guid gameId, HubCallerContext context);
     Task SendAttack(Guid gameId, Position position, HubCallerContext context);
+    Task CheckPlayerTurn(Guid gameId, HubCallerContext context);
 }
 
 public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository, IGameService gameService, IValidator<Boat> boatValidator, IValidator<AttackModel.AttackRequest> attackValidator) : IMultiplayerService
@@ -242,5 +244,27 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
                 }
             }
         }
+    }
+
+    public async Task CheckPlayerTurn(Guid gameId, HubCallerContext context)
+    {
+        var playerId = context.User?.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+        var isPlayerTurn = gameService.IsPlayerTurn(gameId, playerId);
+
+        await gameHub.Clients.User(playerId).SendAsync("IsPlayerTurn", isPlayerTurn);
+
+        var game = gameRepository.GetGame(gameId);
+        if (!game.AttackHistory.IsNullOrEmpty()){
+            var otherPlayerId = game?.Players
+        .FirstOrDefault(p => p.PlayerId != playerId)?.PlayerId;
+
+            if (!string.IsNullOrEmpty(otherPlayerId))
+            {
+                await gameHub.Clients.User(otherPlayerId).SendAsync("IsPlayerTurn", !isPlayerTurn);
+            }
+        }
+        
     }
 }

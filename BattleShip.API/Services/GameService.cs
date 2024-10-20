@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using BattleShip.API.Helpers;
 using BattleShip.Models;
+using BattleShip.Pages;
 using FluentValidation;
 
 namespace BattleShip.API.Services;
@@ -14,6 +15,7 @@ public interface IGameService
     Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
     Task<IResult> GetLeaderboard();
     Task<IResult> PlaceBoats(List<Boat> playerBoats, Guid gameId, IValidator<Boat> validator, string? playerId = null);
+    bool IsPlayerTurn(Guid gameId, string? playerId = null);
 }
 
 public class GameService(IGameRepository gameRepository, IHttpContextAccessor httpContextAccessor) : IGameService
@@ -207,4 +209,17 @@ public class GameService(IGameRepository gameRepository, IHttpContextAccessor ht
         return Task.FromResult(Results.Ok());
     }
 
+    public bool IsPlayerTurn(Guid gameId, string? playerId)
+    {
+        if (playerId == null)
+        {
+            playerId = Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        var gameState = gameRepository.GetGame(gameId);
+
+        var isPlayerTurn = GameHelper.IsPlayerTurn(gameState, playerId);
+
+        return isPlayerTurn;
+    }
 }

@@ -11,6 +11,7 @@
 <main>
     @if (GameService.playerGrid != null && GameService.opponentGrid != null && GameId != null)
     {
+        <p>@GameService.TurnStatus</p>
         <div class="grids">
             <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGridMultiplayer>
 
