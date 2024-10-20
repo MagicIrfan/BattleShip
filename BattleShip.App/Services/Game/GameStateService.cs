@@ -51,10 +51,10 @@ public class GameStateService : IGameStateService
     public void UpdateGameState(AttackModel.AttackResponse attackResponse)
     {
         UpdateGrid(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, OpponentGrid);
-        RecordAttack(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, "Le joueur");
+        RecordAttack(attackResponse.PlayerAttackPosition, attackResponse.PlayerIsHit, attackResponse.PlayerIsSunk, "Le joueur");
 
         UpdateGrid(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, PlayerGrid);
-        RecordAttack(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, "L'ordinateur");
+        RecordAttack(attackResponse.AiAttackPosition, attackResponse.AiIsHit ?? false, attackResponse.AiIsSunk ?? false, "L'ordinateur");
         _eventService.NotifyChange();   
     }
 
@@ -67,13 +67,12 @@ public class GameStateService : IGameStateService
         grid.PositionsData[position.X][position.Y].State = state;
     }
 
-    private void RecordAttack(Position position, bool isHit, string attacker)
+    private void RecordAttack(Position position, bool isHit, bool isSunk, string attacker)
     {
-        Historique.Add($"{attacker} a attaqué la position ({position.X}, {position.Y}) - {(isHit ? "Touché" : "Raté")}");
-        if (isHit)
-        {
-            Historique.Add($"{attacker} a coulé un bateau !");
-        }
+        string result = isHit ? "Touché" : "Raté";
+        string sinkInfo = isSunk ? " et a coulé un bateau" : "";
+
+        Historique.Add($"{attacker} a attaqué la position ({position.X}, {position.Y}) - {result}{sinkInfo}.");
     }
 
     public void PlaceBoat(List<Position> positions)
@@ -96,6 +95,11 @@ public class GameStateService : IGameStateService
 
         OpponentGrid.PositionsData[computerPosition.X][computerPosition.Y].Position = computerPosition;
         OpponentGrid.PositionsData[computerPosition.X][computerPosition.Y].State = null;
+
+        if (Historique.Any())
+        {
+            Historique.RemoveAt(Historique.Count - 1);
+        }
     }
 }
 
