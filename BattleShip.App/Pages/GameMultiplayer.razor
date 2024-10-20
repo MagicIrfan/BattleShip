@@ -3,7 +3,10 @@
 @inject IJSRuntime JsRuntime
 @inject IModalService Modal
 @inject ITokenService TokenService
+@inject IUserService IUser
 @inject SignalRService _signalRService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
 @attribute [Authorize]
@@ -11,6 +14,11 @@
 <main>
     @if (GameService.playerGrid != null && GameService.opponentGrid != null && GameId != null)
     {
+        @if (GameService.Player != null)
+        {
+            <GameProfile User="@GameService.Player"></GameProfile>
+        }
+        
         <p>@GameService.TurnStatus</p>
         <div class="grids">
             <PlayerGridMultiplayer IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.playerGrid.PositionsData" OnTogglePlacingBoats="TogglePlacingBoats"></PlayerGridMultiplayer>
@@ -24,6 +32,10 @@
 
             <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat" PositionsData="GameService.opponentGrid.PositionsData" OnAttack="HandleAttack"></OpponentGrid>
         </div>
+        @if (GameService.Opponent != null)
+        {
+            <GameProfile User="@GameService.Opponent"></GameProfile>
+        }
     }
     else
     {
@@ -83,11 +95,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Console.WriteLine(GameId);
         var guidValue = Guid.Parse(GameId);
         await GameService.CreateHubConnection();
         await GameService.StartGame(guidValue);
         GameService.OnStateChanged += async () => await InvokeAsync(StateHasChanged);
+        Navigation.LocationChanged += OnLocationChanged;
+        await JS.InvokeVoidAsync("window.addEventListener", "beforeunload", EventCallback.Factory.Create(this, async () => await GameService.LeaveGame()));
+    }
+
+    private async void OnLocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        await GameService.LeaveGame();
     }
 
     private async Task HandleAttack(Position position)
@@ -99,5 +117,10 @@
     private void TogglePlacingBoats()
     {
         GameService.IsPlacingBoat = false;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

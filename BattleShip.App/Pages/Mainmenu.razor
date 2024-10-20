@@ -14,8 +14,8 @@
         {
             <div class="profile">
                 <div class="profile-details">
-                    <img src="@user.Profile" alt="Profile Picture" class="profile-image" />
-                    <p>@user.Name</p>
+                    <img src="@user.Picture" alt="Profile Picture" class="profile-image" />
+                    <p>@user.Username</p>
                 </div>
             </div>
         }
@@ -41,7 +41,7 @@
 
 @code {
     private bool isUserAuthenticated;
-    public User user;
+    public PlayerInfo user;
 
     protected override async Task OnInitializedAsync()
     {

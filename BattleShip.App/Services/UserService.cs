@@ -6,7 +6,7 @@ namespace BattleShip.Services;
 
 public interface IUserService
 {
-    Task<User> LoadPlayerProfile();
+    Task<PlayerInfo> LoadPlayerProfile();
 }
 
 public class UserService : IUserService
@@ -18,7 +18,7 @@ public class UserService : IUserService
         _httpService = httpService;
     }
 
-    public async Task<User> LoadPlayerProfile()
+    public async Task<PlayerInfo> LoadPlayerProfile()
     {
         try
         {
@@ -30,10 +30,10 @@ public class UserService : IUserService
             }
 
             var content = await response.Content.ReadFromJsonAsync<UserProfileResponse>();
-            return new User
+            return new PlayerInfo
             {
-                Name = content?.UserName,
-                Profile = content?.Picture
+                Username = content?.UserName,
+                Picture = content?.Picture
             };
         }
         catch (Exception ex)

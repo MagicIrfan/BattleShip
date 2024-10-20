@@ -10,7 +10,6 @@ public interface IGameService
 {
     Task<AttackModel.AttackResponse> ProcessAttack(AttackModel.AttackRequest attackRequest,
         IValidator<AttackModel.AttackRequest> validator, string? playerId = null);
-
     Task<IResult> RollbackTurn(Guid gameId);
     Task<Guid> StartGame(StartGameRequest request, IValidator<StartGameRequest> validator);
     Task<IResult> GetLeaderboard();

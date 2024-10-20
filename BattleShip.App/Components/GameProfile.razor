@@ -2,8 +2,8 @@
 {
     <div class="profile">
         <div class="profile-details">
-            <img src="@User.Profile" alt="Photo de profil" class="profile-image" />
-            <p>@User.Name</p>
+            <img src="@User.Picture" alt="Photo de profil" class="profile-image" />
+            <p>@User.Username</p>
         </div>
     </div>
 }
@@ -18,5 +18,5 @@ else
 }
 
 @code {
-    [Parameter] public User? User { get; set; }
+    [Parameter] public PlayerInfo? User { get; set; }
 }

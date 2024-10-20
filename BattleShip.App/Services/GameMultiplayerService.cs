@@ -18,6 +18,8 @@ public interface IGameMultiplayerService
     List<string> historique { get; set; }
     string TurnStatus { get; set; }
     bool IsPlacingBoat { get; set; }
+    PlayerInfo Player { get; set; }
+    PlayerInfo Opponent { get; set; }
     Task StartGame(Guid _gameId);
     Task Attack(Position attackPosition);
     Task CreateHubConnection();
@@ -25,11 +27,13 @@ public interface IGameMultiplayerService
     void PlaceBoat(List<Position> positions);
     bool IsBoatAtPosition(Position position);
     Task NotifyChange();
+    Task LeaveGame();
 }
 public class GameMultiplayerService : IGameMultiplayerService
 {
     private HubConnection HubConnection;
     private readonly ITokenService _tokenService;
+    private readonly IUserService _userService;
     public Guid gameId { get; set; }
     public required List<Boat> boats { get; set; } = new List<Boat>();
     public required Grid playerGrid { get; set; }
@@ -37,6 +41,8 @@ public class GameMultiplayerService : IGameMultiplayerService
     public required List<string> historique { get; set; } = new List<string>();
     public required bool IsPlacingBoat { get; set; } = true;
     public string TurnStatus { get; set; }
+    public PlayerInfo Player { get; set; }
+    public PlayerInfo Opponent { get; set; }
     public event Func<Task>? OnStateChanged;
 
     private readonly IGameModalService _modalService;
@@ -44,20 +50,21 @@ public class GameMultiplayerService : IGameMultiplayerService
     private readonly IGameEventService _eventService;
     private readonly SignalRService _signalRService;
 
-    public GameMultiplayerService(ITokenService tokenService , IGameModalService modalService, NavigationManager navManager, IGameEventService eventService, SignalRService signalRService)
+    public GameMultiplayerService(ITokenService tokenService , IGameModalService modalService, NavigationManager navManager, IGameEventService eventService, SignalRService signalRService, IUserService userService)
     {
         _tokenService = tokenService;
         _modalService = modalService;
         _navManager = navManager;
         _eventService = eventService;
         _signalRService = signalRService;
+        _userService = userService;
     }
 
     public async Task NotifyChange()
     {
         if (OnStateChanged != null)
         {
-            await OnStateChanged.Invoke(); // Déclenche l'événement pour les composants abonnés
+            await OnStateChanged.Invoke(); 
         }
     }
 
@@ -71,7 +78,8 @@ public class GameMultiplayerService : IGameMultiplayerService
     public async Task StartGame(Guid _gameId)
     {
         gameId = _gameId;
-        await HubConnection.SendAsync("SetReady", gameId);
+        Player = await _userService.LoadPlayerProfile();
+        await HubConnection.SendAsync("SendProfile", gameId, Player.Username, Player.Picture);
         playerGrid = new Grid(10, 10);
         opponentGrid = new Grid(10, 10);
         boats = new List<Boat>();
@@ -84,10 +92,8 @@ public class GameMultiplayerService : IGameMultiplayerService
     {
         var token = await _tokenService.GetAccessTokenAsync();
 
-        // Créez la connexion au hub
         HubConnection = _signalRService.GetConnection();
 
-        // Abonnez-vous aux événements SignalR ici
         HubConnection.On<string?>("BoatPlaced", (playerId) =>
         {
             Console.WriteLine($"Le joueur {playerId} a bien placé ses bateaux !");
@@ -168,6 +174,22 @@ public class GameMultiplayerService : IGameMultiplayerService
             TurnStatus = isPlayerTurn ? "C'est ton tour !" : "Au tour de l'adversaire";
             await NotifyChange();
         });
+
+        HubConnection.On<PlayerInfo>("SendPlayerInfo", async (player) =>
+        {
+            Console.WriteLine("Joueur");
+            Opponent = player;
+            await NotifyChange();
+        });
+
+        HubConnection.On("GameIsFinished", async () =>
+        {
+            var result = await _modalService.ShowModal<GameModal>("Gagné", "Vous avez gagné la partie");
+            if (result == "return")
+            {
+                _navManager.NavigateTo("/");
+            }
+        });
     }
 
     private void UpdateGrid(Position position, bool isHit, Grid grid)
@@ -194,5 +216,14 @@ public class GameMultiplayerService : IGameMultiplayerService
     public bool IsBoatAtPosition(Position position)
     {
         return boats.Any(boat => boat.Positions.Any(p => p.X == position.X && p.Y == position.Y));
+    }
+
+    public async Task LeaveGame()
+    {
+        if (HubConnection != null)
+        {
+            await HubConnection.SendAsync("LeaveGame", gameId);
+            await HubConnection.DisposeAsync();
+        }
     }
 }

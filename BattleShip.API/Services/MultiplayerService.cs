@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Globalization;
+using System.Security.Claims;
 using BattleShip.Components;
 using BattleShip.Models;
 using BattleShip.Pages;
@@ -19,6 +20,7 @@ public interface IMultiplayerService
     Task PlaceBoat(List<Boat> playerBoats, Guid gameId, HubCallerContext context);
     Task SendAttack(Guid gameId, Position position, HubCallerContext context);
     Task CheckPlayerTurn(Guid gameId, HubCallerContext context);
+    Task SendProfile(Guid gameId, string username, string picture, HubCallerContext context);
 }
 
 public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository gameRepository, IGameService gameService, IValidator<Boat> boatValidator, IValidator<AttackModel.AttackRequest> attackValidator) : IMultiplayerService
@@ -203,14 +205,21 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         var gameState = gameRepository.GetGame(gameId);
         if (gameState != null)
         {
+            var otherPlayerId = gameState?.Players
+            .FirstOrDefault(p => p.PlayerId != playerId)?.PlayerId;
+
+            await gameHub.Clients.User(otherPlayerId).SendAsync("GameIsFinished");
+
             await gameHub.Groups.RemoveFromGroupAsync(context.ConnectionId, gameId.ToString());
 
-            var player = gameState.Players.FirstOrDefault(p => p.PlayerId == playerId);
+            /*var player = gameState.Players.FirstOrDefault(p => p.PlayerId == playerId);
             if (player != null)
             {
                 player.IsPlayerWinner = true; 
                 gameRepository.UpdateGame(gameState);
-            }
+            }*/
+
+            gameRepository.UpdateGame(gameState);
         } 
     }
 
@@ -266,5 +275,23 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
             }
         }
         
+    }
+
+    public async Task SendProfile(Guid gameId, string username, string picture, HubCallerContext context)
+    {
+        PlayerInfo playerInfo = new PlayerInfo();
+        playerInfo.Username = username;
+        playerInfo.Picture = picture;
+        var playerId = context.User?.Claims
+           .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+        var game = gameRepository.GetGame(gameId);
+        var otherPlayerId = game?.Players
+        .FirstOrDefault(p => p.PlayerId != playerId)?.PlayerId;
+
+        if (!string.IsNullOrEmpty(otherPlayerId))
+        {
+            await gameHub.Clients.User(otherPlayerId).SendAsync("SendPlayerInfo", playerInfo);
+        }
     }
 }

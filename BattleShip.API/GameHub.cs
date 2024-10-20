@@ -48,4 +48,9 @@ public class GameHub(IMultiplayerService multiplayerService) : Hub
     {
         await multiplayerService.CheckPlayerTurn(gameId,Context);
     }
+
+    public async Task SendProfile(Guid gameId, string username, string picture)
+    {
+        await multiplayerService.SendProfile(gameId, username, picture, Context);
+    }
 }
