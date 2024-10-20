@@ -7,29 +7,30 @@
 @inject NavigationManager Navigation
 @inject SignalRService _signalRService
 
-<h3>Multiplayer BattleShip</h3>
-
 <div class="game-container">
     <div class="game-setup join-lobby">
-        <h4>Join an Existing Lobby</h4>
-        <label>Enter Game ID:</label>
+        <h4>Rejoignez un lobby existant</h4>
+        <label>Entrez l'ID du joueur</label>
         <div style="display: flex; align-items: center;">
-            <input @bind="_gameIdInput" placeholder="Enter Game ID" />
-            <button @onclick="() => JoinGame(Guid.TryParse(_gameIdInput, out var gameId) ? gameId : null)" class="join-game-button">Join Game</button>
+            <input @bind="_gameIdInput" placeholder="Entrez l'ID du joueur" />
+            <button @onclick="() => JoinGame(Guid.TryParse(_gameIdInput, out var gameId) ? gameId : null)" class="join-game-button">Rejoindre</button>
         </div>
-        <label>Available Lobbies:</label>
-        <ul class="available-lobbies">
-            @foreach (var lobby in _availableLobbies)
-            {
-            <li>
-                <button @onclick="() => JoinGame(lobby.GameId)">Lobby ID: @lobby.GameId</button>
-            </li>
-            }
-        </ul>
+        @if (_availableLobbies.Any())
+        {
+            <label>Lobbys disponibles:</label>
+            <ul class="available-lobbies">
+                @foreach (var lobby in _availableLobbies)
+                {
+                    <li>
+                        <button @onclick="() => JoinGame(lobby.GameId)">Lobby ID: @lobby.GameId</button>
+                    </li>
+                }
+            </ul>
+        }
     </div>
 
     <div class="game-setup create-lobby">
-        <h4>Create a New Lobby</h4>
+        <h4>Créer un nouveau lobby</h4>
         <div class="checkbox-container">
             <label>Is Private ?</label>
             <label class="toggle-label">
@@ -37,55 +38,55 @@
                 <span class="slider"></span>
             </label>
         </div>
-        <button @onclick="CreateLobby">Create Lobby</button>
+        <button @onclick="CreateLobby">Créer un lobby</button>
     </div>
 </div>
 
 @if (!string.IsNullOrEmpty(_message))
 {
-<p class="error-message">@_message</p>
+    <p class="error-message">@_message</p>
 }
 
 @if (_gameId != Guid.Empty)
 {
-    <p>Connected to Game ID: <strong>@_gameId</strong></p>
-    <button @onclick="LeaveGame" class="leave-button">Leave Game</button>
+    <div class="connected">
+        <p>Connecté au jeu: <strong>@_gameId</strong></p>
+        <button @onclick="LeaveGame" class="leave-button">Quitter</button>
+        <button @onclick="SetReady" disabled="@(!IsReadyEnabled)" class="ready-button">
+            Prêt
+        </button>
+    </div>
 }
 
 @if (_playerProfiles.Count > 0)
 {
-<div class="players-section">
-    <h4>Players in Game:</h4>
-    <div class="player-list">
-        @foreach (var player in _playerProfiles)
-        {
-        <div class="player-card">
-            <div class="player-icon">
-                @if (_readyPlayers.Contains(player.Id))
-                {
-                <span class="checkmark">✔️</span>
-                }
-                @if (!string.IsNullOrEmpty(player.Picture))
-                {
-                <img src="@player.Picture" alt="Profile Picture" class="profile-picture" />
-                }
-                else
-                {
-                <span>👤</span>
-                }
-            </div>
+    <div class="players-section">
+        <div class="player-list">
+            @foreach (var player in _playerProfiles)
+            {
+            <div class="player-card">
+                <div class="player-icon">
+                    @if (_readyPlayers.Contains(player.Id))
+                    {
+                    <span class="checkmark">✔️</span>
+                    }
+                    @if (!string.IsNullOrEmpty(player.Picture))
+                    {
+                    <img src="@player.Picture" alt="Profile Picture" class="profile-picture" />
+                    }
+                    else
+                    {
+                    <span>👤</span>
+                    }
+                </div>
 
-            <div class="player-id">
-                <span>@player.Username</span>
+                <div class="player-id">
+                    <span>@player.Username</span>
+                </div>
             </div>
+            }
         </div>
-        }
     </div>
-</div>
-
-<button @onclick="SetReady" disabled="@(!IsReadyEnabled)" class="ready-button">
-    Prêt
-</button>
 }
 
 
@@ -247,6 +248,15 @@
 }
 
 <style>
+    .connected{
+        color:white;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        flex-direction:column;
+        gap:10px;
+    }
+
     .error-message {
         color: red;
         font-weight: bold;
@@ -256,6 +266,7 @@
     .game-container {
         display: flex;
         height: 50vh;
+        color:white;
     }
 
     .game-setup {
@@ -299,7 +310,6 @@
     }
 
     .join-game-button {
-        padding: 0.5em 1em;
         margin-left: 10px;
     }
 
@@ -315,12 +325,11 @@
     button {
         background-color: #007BFF;
         color: white;
-        padding: 0.5em 1em;
         font-size: 1em;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        width: 100%; 
+        padding: 0.5em; 1em;
     }
 
     button:hover {
@@ -329,6 +338,9 @@
 
     .leave-button {
         background-color: #ff6b6b;
+        width: 150px;
+        border-radius:4px;
+        color:black;
     }
 
     .leave-button:hover {
@@ -349,7 +361,7 @@
         padding: 1em;
         margin: 0.5em;
         text-align: center;
-        width: 120px;
+        width: 200px;
         background-color: #f9f9f9;
         border-radius: 8px;
         position: relative;
@@ -366,13 +378,12 @@
 
     .ready-button {
         display: block;
-        margin-top: 1em;
         background-color: #4CAF50;
-        color: white;
         border: none;
-        padding: 0.5em 2em;
         font-size: 1em;
+        width: 150px;
         border-radius: 4px;
+        color: black;
         cursor: pointer;
     }
 

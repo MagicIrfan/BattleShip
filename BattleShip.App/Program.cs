@@ -41,6 +41,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IGameMultiplayerService, GameMultiplayerService>();
 builder.Services.AddScoped<IBoatPlacementService, BoatPlacementService>();
 builder.Services.AddScoped<IGameStateMultiplayerService, GameStateMultiplayerService>();
+builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
 builder.Services.AddScoped<SignalRService>();
 
 builder.Services.AddBlazoredSessionStorage();

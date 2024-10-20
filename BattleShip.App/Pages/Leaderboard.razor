@@ -1,42 +1,47 @@
 ﻿@page "/leaderboard"
-@inject IGameService GameService
+@using System.Collections.Concurrent;
+@inject ILeaderboardService GameService
 
-@if (leaderboard != null && leaderboard.Any())
+@if (leaderboard != null)
 {
     <div class="leaderboard-container">
-        <table class="leaderboard-table">
-            <thead>
-                <tr>
-                    <th colspan="2">Leaderboard</th>
-                </tr>
-                <tr>
-                    <th>Player</th>
-                    <th>Wins</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var player in leaderboard)
-                {
+        @if (leaderboard.Any())
+        {
+            <table class="leaderboard-table">
+                <thead>
                     <tr>
-                        <td>@player.Key</td>
-                        <td>@player.Value</td>
+                        <th>Joueur</th>
+                        <th>Victoires</th>
+                        <th>Défaites</th>
+                        <th>Bateaux coulés</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var player in leaderboard)
+                    {
+                        <tr>
+                            <td>@player.Key</td>
+                            <td>@player.Value.Wins</td
+                            <td>@player.Value.Losses</td>
+                            <td>@player.Value.SunkenBoats</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="empty-message">Le leaderboard est vide, sois le premier à jouer !</p>
+        }
     </div>
-}
-else
-{
-    <p>Loading leaderboard...</p>
 }
 
 @code {
-    Dictionary<string, int> leaderboard = new Dictionary<string, int>();
+    ConcurrentDictionary<string, PlayerStats> leaderboard = new ConcurrentDictionary<string, PlayerStats>();
 
     protected override async Task OnInitializedAsync()
     {
-        //leaderboard = await GameService.GetLeaderboard();
+        leaderboard = await GameService.GetLeaderboard();
     }
 }
 
@@ -46,8 +51,7 @@ else
         margin: 20px auto;
         border-radius: 10px;
         overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        background-color: #ffffff;
+        padding: 20px;
     }
 
     .leaderboard-table {
@@ -56,30 +60,33 @@ else
     }
 
         .leaderboard-table th {
-            background-color: #ffffff;
-            color: #000;
+            background-color: #f7f7f7; 
+            color: #333;
             padding: 15px;
-            text-align: center;
+            text-align: left; 
             font-weight: bold;
+            border-bottom: 2px solid #007BFF; 
         }
 
         .leaderboard-table td {
             padding: 12px;
             border-bottom: 1px solid #ddd;
-            text-align: center;
+            text-align: left;
         }
 
         .leaderboard-table tr:hover {
-            background-color: #f1f1f1;
+            background-color: #f1f1f1
         }
 
         .leaderboard-table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
 
-    p {
+
+    .empty-message {
         text-align: center;
         font-size: 1.2em;
-        color: #888;
+        color: #ff6347;
+        margin-top: 20px; 
     }
 </style>

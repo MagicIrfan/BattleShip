@@ -4,6 +4,7 @@ using BattleShip.Components;
 using BattleShip.Models;
 using BattleShip.Models.State;
 using BattleShip.Pages;
+using BattleShip.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
@@ -39,6 +40,22 @@ public class MultiplayerService(IHubContext<GameHub> gameHub, IGameRepository ga
         var attackRequest = new AttackModel.AttackRequest(gameId, position);
 
         var attackResponse = await gameService.ProcessAttack(attackRequest, attackValidator, attackerId);
+
+        var attackerName = context.User?.Claims
+    .FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+        var receiverName = context.User?.Claims
+   .FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+
+        if (attackResponse.PlayerIsSunk && !string.IsNullOrEmpty(attackerName))
+        {
+            gameRepository.UpdateSunkenBoats(attackerName);
+        }
+
+        if (attackResponse.PlayerIsWinner && !string.IsNullOrEmpty(attackerName))
+        {
+            gameRepository.UpdatePlayerWins(attackerName);
+        }
 
         await gameHub.Clients.User(attackerId).SendAsync("AttackResult", attackResponse);
 
