@@ -46,6 +46,22 @@
         GameEventService.OnGameRestarted += HandleGameRestarted;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JsRuntime.InvokeVoidAsync("addResizeListener", DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleResize()
+    {
+        var rect = await JsRuntime.InvokeAsync<BoundingClientRect>("getGridBoundingRect", playerGridRef);
+        gridX = rect.Left + 10;
+        gridY = rect.Top + 10;
+    }
+
     private void HandleGameRestarted()
     {
         isVertical = false;
@@ -59,21 +75,19 @@
     public void Dispose()
     {
         GameEventService.OnGameRestarted -= HandleGameRestarted;
+        JsRuntime.InvokeVoidAsync("removeResizeListener");
     }
 
     private async Task PlaceBoat(MouseEventArgs e)
     {
         if (!IsPlacingBoats) return;
 
-        var gridPadding = 10;
-        var cellGap = 5;
-
         if (gridX == 0 && gridY == 0)
         {
             var rect = await JsRuntime.InvokeAsync<BoundingClientRect>("getGridBoundingRect", playerGridRef);
 
-            gridX = rect.Left + gridPadding;
-            gridY = rect.Top + gridPadding;
+            gridX = rect.Left + 10;
+            gridY = rect.Top + 10;
         }
 
         var cellSize = await JsRuntime.InvokeAsync<int>("getCellSize", cellRef);
@@ -81,13 +95,15 @@
         var relativeX = (int)(e.ClientX - gridX);
         var relativeY = (int)(e.ClientY - gridY);
 
-        var effectiveCellSize = cellSize + cellGap;
+        var effectiveCellSize = cellSize + 5;
 
         mouseRow = (relativeY < 0 || relativeY >= PositionsData.Length * effectiveCellSize) ? -1 : relativeY / effectiveCellSize;
         mouseCol = (relativeX < 0 || relativeX >= PositionsData.Length * effectiveCellSize) ? -1 : relativeX / effectiveCellSize;
     }
 
     public async Task OnMouseMoveHandler(MouseEventArgs e) => await PlaceBoat(e);
+
+    public void OnMouseWheelHandler(WheelEventArgs e) => isVertical = !isVertical;
 
     private string GetCellBackgroundColor(Position playerPosition, int col, int row)
     {
@@ -101,6 +117,23 @@
 
         return color;
     }
+
+    private bool IsHighlighted(int row, int col) =>
+        mouseRow != -1 && mouseCol != -1 &&
+        IsPlacingBoats && CanPlaceBoat() &&
+        ((isVertical && col == mouseCol && row >= mouseRow && row < mouseRow + sizes[indexBoat]) ||
+        (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
+
+    private bool CanPlaceBoat() =>
+        isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < PositionsData.Length :
+                     mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < PositionsData.Length;
+
+    private bool CanPlaceBoatAtCurrentPosition(Position position, bool isVertical, int boatSize)
+    {
+        return !GameService.ArePositionsOverlapping(mouseRow, mouseCol, isVertical, boatSize);
+    }
+
+    private void TogglePlacingBoats() => OnTogglePlacingBoats.InvokeAsync();
 
     public async Task OnMouseClickHandler(MouseEventArgs e, Position position)
     {
@@ -125,25 +158,6 @@
             indexBoat++;
         }
     }
-
-    public void OnMouseWheelHandler(WheelEventArgs e) => isVertical = !isVertical;
-
-    private bool IsHighlighted(int row, int col) =>
-    mouseRow != -1 && mouseCol != -1 &&
-    IsPlacingBoats && CanPlaceBoat() &&
-    ((isVertical && col == mouseCol && row >= mouseRow && row < mouseRow + sizes[indexBoat]) ||
-    (!isVertical && row == mouseRow && col >= mouseCol && col < mouseCol + sizes[indexBoat]));
-
-    private bool CanPlaceBoat() =>
-    isVertical ? mouseRow >= 0 && mouseRow + sizes[indexBoat] - 1 < PositionsData.Length :
-                 mouseCol >= 0 && mouseCol + sizes[indexBoat] - 1 < PositionsData.Length;
-
-    private bool CanPlaceBoatAtCurrentPosition(Position position, bool isVertical, int boatSize)
-    {
-        return !GameService.ArePositionsOverlapping(mouseRow, mouseCol, isVertical, boatSize);
-    }
-
-    private void TogglePlacingBoats() => OnTogglePlacingBoats.InvokeAsync();
 
     public class BoundingClientRect
     {
@@ -207,5 +221,17 @@
         if (!cellElement) return null;
         const style = getComputedStyle(cellElement);
         return parseInt(style.width);
+    };
+
+    window.addResizeListener = function (dotNetHelper) {
+        window.addEventListener('resize', () => {
+            dotNetHelper.invokeMethodAsync('HandleResize');
+        });
+    };
+
+    window.removeResizeListener = function () {
+        window.removeEventListener('resize', () => {
+            dotNetHelper.invokeMethodAsync('HandleResize');
+        });
     };
 </script>

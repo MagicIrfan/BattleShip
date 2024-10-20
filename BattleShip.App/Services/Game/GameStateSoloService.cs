@@ -73,6 +73,7 @@ public class GameStateSoloService : IGameStateSoloService
         if (Historique.Any())
         {
             Historique.RemoveAt(Historique.Count - 1);
+            Historique.RemoveAt(Historique.Count - 1);
         }
     }
 }

@@ -9,71 +9,86 @@
 
 @attribute [Authorize]
 
-<PageTitle>BattleShip</PageTitle>
+<div class="solo-container">
+    <div class="game-setup-container">
+        @if (GameService.GetGameId() != null)
+        {
+            <div class="grids-container">
+                <div class="grid-section player-grid">
+                    <h2> Grille du joueur</h2>
+                    <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat()"
+                                PositionsData="GameService.GetPlayerGrid().PositionsData"
+                                OnTogglePlacingBoats="TogglePlacingBoats">
+                    </PlayerGrid>
+                </div>
 
-<main>
-    @if (GameService.GetGameId() != null)
-    {
-        <GameProfile User="@User"></GameProfile>
-        <button @onclick="OnRollback" disabled="@GameService.AreGridsEmpty()">Rollback</button>
-        <div class="grids">
-            <PlayerGrid IsPlacingBoats="GameService.IsPlacingBoat()"
-                        PositionsData="GameService.GetPlayerGrid().PositionsData"
-                        OnTogglePlacingBoats="TogglePlacingBoats">
-            </PlayerGrid>
+                <div class="historique-container">
+                    @foreach (var item in GameService.GetHistorique())
+                    {
+                        <p>@item</p>
+                    }
+                </div>
 
-            <div class="historique-container">
-                <h2>Historique</h2>
-                @foreach (var item in GameService.GetHistorique())
-                {
-                    <p>@item</p>
-                }
+                <div class="grid-section opponent-grid">
+                    <h2>Grille de l'adversaire</h2>
+                    <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()"
+                                  PositionsData="GameService.GetOpponentGrid().PositionsData"
+                                  OnAttack="HandleAttack">
+                    </OpponentGrid>
+                </div>
             </div>
 
-            <OpponentGrid IsPlacingBoats="GameService.IsPlacingBoat()"
-                          PositionsData="GameService.GetOpponentGrid().PositionsData"
-                          OnAttack="HandleAttack">
-            </OpponentGrid>
-        </div>
-        <GameProfile></GameProfile>
-    }
-    else
-    {
-        <p>Chargement ...</p>
-    }
-</main>
+            <div class="action-buttons">
+                <button @onclick="OnRollback" class="rollback" disabled="@GameService.AreGridsEmpty()">Annuler le dernier coup</button>
+            </div>
+        }
+        else
+        {
+            <p>Chargement...</p>
+        }
+    </div>
+</div>
 
 <style>
-    .grids {
-        display: flex;
-        flex-grow: 1;
-        overflow: hidden;
-        position: relative;
-        gap: 50px;
-        justify-content: center;
-        align-items: center;
+    .solo-container {
+        padding: 2em;
     }
 
-    .historique-container {
+    .game-setup-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5em;
+    }
+
+    .grids-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 50px;
+    }
+
+    .grid-section {
+        flex: 1;
         text-align: center;
+    }
+
+        .grid-section h2 {
+            margin-bottom: 1em;
+            font-size: 1.2em;
+            color: white;
+            font-weight: bold;
+        }
+
+    .historique-container {
         background-color: #f9f9f9;
         border: 1px solid #d1d1d1;
         border-radius: 10px;
         padding: 20px;
-        overflow-y: auto;
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
         width: 320px;
         max-height: 480px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
     }
-
-        .historique-container h2 {
-            font-size: 1.2em;
-            margin-bottom: 15px;
-            color: #444;
-            font-weight: bold;
-        }
 
         .historique-container p {
             font-size: 0.9em;
@@ -88,6 +103,29 @@
             .historique-container p:hover {
                 background-color: #e6f7ff;
             }
+
+    .action-buttons {
+        text-align: center;
+    }
+
+    .rollback {
+        background-color: #7fc9ff;
+        border: none;
+        border-radius: 30px;
+        color: #003366;
+        font-size: 20px;
+        font-weight: 600;
+        cursor:pointer;
+        padding: 15px 30px;
+        width: 16em;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .rollback:disabled {
+        cursor:not-allowed;
+        background-color:lightgray;
+    }
 </style>
 
 @code {
